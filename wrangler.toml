@@ -1,0 +1,57 @@
+name = "boss-theres-a-situation"
+main = "worker/index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Serves everything in /public as static files. Any request that doesn't
+# match a route in worker/index.js falls through to these files.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# D1 database — unified leaderboard + teacher-uploaded practice cases.
+# Create it with:  npx wrangler d1 create boss-situation-db
+# then paste the returned database_id below.
+[[d1_databases]]
+binding = "DB"
+database_name = "boss-situation-db"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+# Workers AI — the last-resort fallback in the AI provider chain below.
+# Free on every Cloudflare account, no extra setup needed beyond this binding.
+[ai]
+binding = "AI"
+
+# ---------------------------------------------------------------------------
+# AI marking is backed by a provider fallback chain, tried in this order:
+#   1. OpenRouter   (env.OPENROUTER_API_KEY)
+#   2. Groq         (env.GROQ_API_KEY)
+#   3. Gemini       (env.GEMINI_API_KEY)
+#   4. Workers AI   (the [ai] binding above — always available, no key needed)
+# Each provider is skipped (not treated as an error) if its secret isn't set,
+# so the chain degrades gracefully all the way down to Workers AI.
+#
+# Secrets are NOT stored in this file (never commit API keys to source
+# control). Set them after deploying with:
+#
+#   npx wrangler secret put OPENROUTER_API_KEY
+#   npx wrangler secret put GROQ_API_KEY        # optional
+#   npx wrangler secret put GEMINI_API_KEY      # optional
+#
+# See README.md for the exact OpenRouter key to paste in.
+# ---------------------------------------------------------------------------
+
+# Optional: bump these limits if needed. Images are stored as base64 data
+# URLs directly in D1, so keep uploaded stimulus images small (< 500KB).
+
+# ---------------------------------------------------------------------------
+# First-time admin account bootstrap.
+# There is no hard-coded admin login anymore — the very first account is
+# created the first time someone logs in at /admin.html using these two
+# secrets. Set them once, log in, then you can leave them (they're only
+# read while the `users` table is empty) or rotate them since they're no
+# longer used after that first login creates the real account:
+#
+#   npx wrangler secret put SEED_ADMIN_USERNAME
+#   npx wrangler secret put SEED_ADMIN_PASSWORD
+# ---------------------------------------------------------------------------
