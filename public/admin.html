@@ -126,7 +126,7 @@ async function renderDashboard(msg) {
     <div class="topline">
       <div>Signed in as <b>${escapeHtml(me.username)}</b> <span class="tag">${me.role === "admin" ? "Admin" : "Teacher"}</span></div>
       <div class="row">
-        <span class="hint" style="margin:0;">v1.7</span>
+        <span class="hint" style="margin:0;">v1.8</span>
         <button class="btn small" id="logoutBtn">Log out</button>
       </div>
     </div>
@@ -524,6 +524,7 @@ function renderCaseList(cases) {
           ${c.status !== "published" ? `<button class="btn small primary" data-action="publish" data-id="${c.id}">Publish</button>` : ""}
           <button class="btn small" data-action="regen-toggle" data-id="${c.id}">🔄 Regenerate a part</button>
           <button class="btn small" data-action="edit-toggle" data-id="${c.id}">✏️ Edit 13 parts</button>
+          <button class="btn small" data-action="image-toggle" data-id="${c.id}">🖼️ ${c.imageData ? "Replace" : "Add"} picture</button>
           <button class="btn small" data-action="delete" data-id="${c.id}">Delete</button>
         </div>
       </div>
@@ -532,6 +533,7 @@ function renderCaseList(cases) {
       </p>
       <div class="regen-panel" data-panel-for="${c.id}" style="display:none;"></div>
       <div class="edit-panel" data-edit-for="${c.id}" style="display:none;"></div>
+      <div class="image-panel" data-image-for="${c.id}" style="display:none;"></div>
     </div>
   `).join("");
 
@@ -562,6 +564,34 @@ function renderCaseList(cases) {
       const isOpen = panel.style.display !== "none";
       panel.style.display = isOpen ? "none" : "flex";
       if (!isOpen) renderRegenPanel(panel, c);
+    });
+  });
+
+
+  $$('button[data-action="image-toggle"]', el).forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const caseId = btn.dataset.id;
+      const c = cases.find((x) => x.id === caseId);
+      const panel = $(`[data-image-for="${caseId}"]`, el);
+      if (panel.style.display !== "none") { panel.style.display = "none"; return; }
+      panel.style.display = "block";
+      panel.innerHTML = `<div class="component" style="margin-top:8px;"><label>Attach picture to case <b>${escapeHtml(c?.title || caseId)}</b></label><input type="file" accept="image/*" data-image-file="${escapeHtmlAttr(caseId)}"/><p class="hint">The image is stored with the case record in D1. Keep it under about 500 KB.</p><span class="image-status hint"></span></div>`;
+      const fileInput = panel.querySelector("input[data-image-file]");
+      fileInput.addEventListener("change", () => {
+        const file = fileInput.files?.[0]; if (!file) return;
+        if (!file.type.startsWith("image/")) { panel.querySelector(".image-status").textContent = "Please choose an image file."; return; }
+        if (file.size > 550000) { panel.querySelector(".image-status").textContent = "Please keep the image below about 500 KB."; fileInput.value = ""; return; }
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const status = panel.querySelector(".image-status"); status.textContent = "Uploading…"; fileInput.disabled = true;
+          try {
+            await api(`/api/admin/cases/${caseId}/image`, { method:"PUT", headers:{"content-type":"application/json"}, body:JSON.stringify({imageData:reader.result}) });
+            status.textContent = "Picture attached. Refreshing case list…";
+            const data = await api("/api/admin/cases"); renderCaseList(data.cases || []);
+          } catch (e) { status.textContent = "Failed: " + e.message; fileInput.disabled = false; }
+        };
+        reader.readAsDataURL(file);
+      });
     });
   });
 
@@ -623,6 +653,42 @@ function renderRegenPanel(panel, c) {
         btn.disabled = false;
       }
     });
+  });
+}
+
+
+function manualFallbackComponentSet(key, scaffold, formal) {
+  const pts = scaffold.stimulusPoints || [];
+  const pt = (n) => pts[n - 1]?.text || `Include the ${n === 1 ? "first" : n === 2 ? "second" : n === 3 ? "third" : n === 4 ? "fourth" : "fifth"} important detail from the situation.`;
+  if (key === "salutation") return { correct: formal ? "Dear Sir/Madam," : "Hi there,", distractors: ["Dear friend,", "Hey everyone,"] };
+  if (key === "greeting") return formal
+    ? { correct: "I hope you are well.", distractors: ["Hey! How's it going?", "I hereby wish to inform you of the following."] }
+    : { correct: "How are you? I hope you have been well.", distractors: ["Good day to you, respected recipient.", "I hereby wish to inform you of the following."] };
+  if (key === "purpose") return { correct: "I am writing to tell you about this situation.", distractors: ["I am writing about an unrelated matter.", "I am writing to complain about the weather."] };
+  if (key === "context") return formal
+    ? { correct: "I would like to explain the situation so that you have the necessary background.", distractors: ["This has nothing to do with the event.", "I have lots of homework tonight."] }
+    : { correct: "I thought I should explain what happened so you know the full story.", distractors: ["This has nothing to do with the event.", "I have lots of homework tonight."] };
+  const km = /^keyinfo([1-5])$/.exec(key);
+  if (km) return { correct: pt(Number(km[1])), distractors: ["This detail is not needed in the letter.", "This is unrelated to the situation."] };
+  if (key === "ownIdea") return { correct: "suggest a helpful idea", distractors: ["offer another practical way to help", "contribute in another suitable way"] };
+  if (key === "closing") return formal
+    ? { correct: "Thank you for considering my suggestion.", distractors: ["See you around!", "Okay bye, talk later!"] }
+    : { correct: "Hope to hear from you soon!", distractors: ["Thank you for your formal consideration of this correspondence.", "I await your written response in due course."] };
+  if (key === "signoff") return formal
+    ? { correct: "Yours sincerely,", distractors: ["Yours faithfully,", "Best regards,"] }
+    : { correct: "Best regards,", distractors: ["Yours sincerely,", "Yours faithfully,"] };
+  if (key === "name") return formal
+    ? { correct: "Wei Ming Tan", distractors: ["Wei Ming", "Mr Tan"] }
+    : { correct: "Wei Ming", distractors: ["Wei Ming Tan", "Mr Tan"] };
+  return { correct: "This is the most suitable sentence for this part.", distractors: ["This does not fit the task.", "This is unrelated to the situation."] };
+}
+
+function buildManualPreviewParts(scaffold, formal) {
+  const keys = ["salutation","greeting","purpose","context","keyinfo1","keyinfo2","keyinfo3","keyinfo4","keyinfo5","ownIdea","closing","signoff","name"];
+  const labels = ["Salutation (Audience)", formal ? "Introduction (formal)" : "Greeting (informal)", "Purpose","Context","Key information 1","Key information 2","Key information 3","Key information 4","Key information 5","Own idea","Closing sentence","Sign-off","Name"];
+  return keys.map((key, i) => {
+    const set = manualFallbackComponentSet(key, scaffold, formal);
+    return { key, label: labels[i], options: [set.correct, ...(set.distractors || [])].slice(0,3).map((text, j) => ({ id: ["a","b","c"][j], text })), correctId: "a" };
   });
 }
 
@@ -701,7 +767,7 @@ function renderForm(form) {
     const scaffold = { taskText, task_text: taskText, stimulusPoints: keyInfo.slice(0,5).map((text,i)=>({id:`s${i+1}`,text,relevant:true})), ownContentPrompt: $("#f_ownprompt", form).value.trim(), ownContentKeywords: $("#f_ownideas", form).value.split("\n").map(s=>[s.trim()]).filter(g=>g[0]) };
     const keys = ["salutation","greeting","purpose","context","keyinfo1","keyinfo2","keyinfo3","keyinfo4","keyinfo5","ownIdea","closing","signoff","name"];
     const labels = ["Salutation (Audience)", formal ? "Introduction (formal)" : "Greeting (informal)", "Purpose","Context","Key information 1","Key information 2","Key information 3","Key information 4","Key information 5","Own idea","Closing sentence","Sign-off","Name"];
-    const parts = keys.map((key,i)=>{ const set=fallbackComponentSet(key,scaffold,formal); fallback[key]={key,label:labels[i],options:["a","b","c"].map((id,j)=>({id,text:[set.correct,...set.distractors][j] || ""})),correctId:"a"}; return fallback[key]; });
+    const parts = keys.map((key,i)=>{ const set=manualFallbackComponentSet(key,scaffold,formal); fallback[key]={key,label:labels[i],options:["a","b","c"].map((id,j)=>({id,text:[set.correct,...set.distractors][j] || ""})),correctId:"a"}; return fallback[key]; });
     $("#preview", form).innerHTML = `<h3>Manual case editor</h3><p class="hint">Edit all 13 parts below. Each part has 3 selectable options; pupils also get a separate blank field for their own response.</p><div id="manualEditor"></div><button type="button" class="btn primary" id="saveManualCase">💾 Save full manual case</button><span id="manualStatus" class="hint" style="margin-left:8px;"></span>`;
     const editor=$("#manualEditor", form);
     editor.innerHTML=parts.map((c,i)=>`<div class="component" style="margin-bottom:12px;"><label>${i+1}. Label</label><input data-mlabel="${c.key}" value="${escapeHtmlAttr(c.label)}"/><div class="row" style="margin-top:5px;"><input type="radio" name="mcorrect-${c.key}" value="a" checked/><input data-mopt="${c.key}-a" value="${escapeHtmlAttr(c.options[0].text)}"/></div><div class="row" style="margin-top:5px;"><input type="radio" name="mcorrect-${c.key}" value="b"/><input data-mopt="${c.key}-b" value="${escapeHtmlAttr(c.options[1].text)}"/></div><div class="row" style="margin-top:5px;"><input type="radio" name="mcorrect-${c.key}" value="c"/><input data-mopt="${c.key}-c" value="${escapeHtmlAttr(c.options[2].text)}"/></div><p class="hint">Pupils also receive a blank “write your own response” field automatically.</p></div>`).join("");
