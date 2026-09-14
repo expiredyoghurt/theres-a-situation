@@ -59,7 +59,7 @@
 
 import { DEMO_CASES } from "./demoCases.js";
 
-const APP_VERSION = "v1.6";
+const APP_VERSION = "v1.7";
 const SESSION_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 const AI_TIMEOUT_MS = 9000; // per-provider timeout before falling through the chain
 const REVIEW_COOLDOWN_HOURS = 20; // spaced-review: don't re-suggest a below-threshold case sooner than this
@@ -125,6 +125,9 @@ export default {
       if (path === "/api/admin/cases" && request.method === "POST") {
         return await requireAuth(env, request, (session) => adminCreateCase(env, request, session));
       }
+      if (path === "/api/admin/cases/manual" && request.method === "POST") {
+        return await requireAuth(env, request, (session) => adminCreateManualCase(env, request, session));
+      }
       const publishMatch = path.match(/^\/api\/admin\/cases\/([a-zA-Z0-9_-]+)\/publish$/);
       if (publishMatch && request.method === "PUT") {
         return await requireAuth(env, request, (session) => adminPublishCase(env, publishMatch[1], session));
@@ -151,6 +154,12 @@ export default {
       }
       if (path === "/api/admin/ai-health" && request.method === "GET") {
         return await requireAuth(env, request, () => adminAiHealth(env));
+      }
+      if (path === "/api/admin/student-access" && request.method === "GET") {
+        return await requireAuth(env, request, () => getStudentAccessSetting(env));
+      }
+      if (path === "/api/admin/student-access" && request.method === "PUT") {
+        return await requireAuth(env, request, (session) => setStudentAccessSetting(env, request, session));
       }
 
       // ---------- teacher accounts (admin only) ----------
@@ -703,9 +712,36 @@ async function findFullCase(env, id) {
   return fullCaseFromRow(row);
 }
 
+// ---------- student access / case listing ----------
+
+async function ensureSettingsTable(env) {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`).run();
+}
+
+async function isStudentAccessEnabled(env) {
+  try {
+    await ensureSettingsTable(env);
+    const row = await env.DB.prepare("SELECT value FROM app_settings WHERE key = 'student_access_enabled'").first();
+    return row ? row.value !== "0" : true;
+  } catch (e) { return true; }
+}
+
+async function getStudentAccessSetting(env) { return json({ enabled: await isStudentAccessEnabled(env) }); }
+
+async function setStudentAccessSetting(env, request, session) {
+  const body = await request.json().catch(() => ({}));
+  if (typeof body.enabled !== "boolean") return json({ error: "enabled must be true or false" }, 400);
+  try {
+    await ensureSettingsTable(env);
+    await env.DB.prepare(`INSERT INTO app_settings (key, value) VALUES ('student_access_enabled', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).bind(body.enabled ? "1" : "0").run();
+    return json({ enabled: body.enabled, changedBy: session.username });
+  } catch (e) { return json({ error: "Could not save student access setting. Run schema.sql against the D1 database." }, 500); }
+}
+
 // ---------- case listing / retrieval ----------
 
 async function listCases(env) {
+  if (!(await isStudentAccessEnabled(env))) return json({ cases: [], studentAccessEnabled: false });
   const demoList = DEMO_CASES.map((c) => ({
     id: c.id, title: c.title, formal: c.formal, imageData: c.imageData, builtin: true,
   }));
@@ -722,6 +758,7 @@ async function listCases(env) {
 }
 
 async function getCase(env, id) {
+  if (!(await isStudentAccessEnabled(env))) return json({ error: "Student access is currently disabled." }, 403);
   const full = await findFullCase(env, id);
   if (!full) return json({ error: "Case not found" }, 404);
   return json({ case: toPublicCase(full) });
@@ -730,6 +767,7 @@ async function getCase(env, id) {
 // ---------- scoring ----------
 
 async function submitCase(env, request, id) {
+  if (!(await isStudentAccessEnabled(env))) return json({ error: "Student access is currently disabled." }, 403);
   const full = await findFullCase(env, id);
   if (!full) return json({ error: "Case not found" }, 404);
   const body = await request.json();
@@ -1155,6 +1193,7 @@ async function getLeaderboard(env, url) {
  * haven't mastered yet, after a delay rather than in an immediate loop.
  */
 async function getPracticeDue(env, url) {
+  if (!(await isStudentAccessEnabled(env))) return json({ due: [], disabled: true });
   const name = (url.searchParams.get("name") || "").toString().trim().slice(0, 40);
   const playerClass = (url.searchParams.get("playerClass") || "").toString().trim().slice(0, 20).toUpperCase();
   const deviceId = (url.searchParams.get("deviceId") || "").toString().trim().slice(0, 40);
@@ -1261,33 +1300,48 @@ async function adminPublishCase(env, id, session) {
  * separate explicit "Publish" action (adminPublishCase) makes it live,
  * and records who approved it.
  */
-async function adminCreateCase(env, request, session) {
-  const body = await request.json();
-  const required = ["title", "taskText", "keyInfo", "modelLetter"];
-  for (const f of required) {
-    if (!body[f] || (Array.isArray(body[f]) && body[f].length === 0)) {
-      return json({ error: `Missing field: ${f}` }, 400);
-    }
-  }
-  const formal = !!body.formal;
+async function saveBuiltCase(env, body, session, built, meta = {}) {
   const id = newId("case");
-
-  const { built, aiDetail, anyAiUsed, allAiUsed } = await aiBuildCase(env, body, formal);
-
   await env.DB.prepare(
-    `INSERT INTO cases (id, title, image_data, task_text, task_chunks, formal,
-      stimulus_points, own_content_prompt, own_content_keywords, components,
-      answer_key, model_letter, status, created_by)
+    `INSERT INTO cases (id, title, image_data, task_text, task_chunks, formal, stimulus_points, own_content_prompt, own_content_keywords, components, answer_key, model_letter, status, created_by)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).bind(
-    id, body.title, body.imageData || null, body.taskText,
-    JSON.stringify(built.taskChunks), formal ? 1 : 0,
-    JSON.stringify(built.stimulusPoints), body.ownContentPrompt || "",
-    JSON.stringify(built.ownContentKeywords), JSON.stringify(built.components),
-    JSON.stringify(built.answerKey), body.modelLetter, "draft", session.username
+    id, body.title, body.imageData || null, body.taskText, JSON.stringify(built.taskChunks), body.formal ? 1 : 0,
+    JSON.stringify(built.stimulusPoints), body.ownContentPrompt || "", JSON.stringify(built.ownContentKeywords || []),
+    JSON.stringify(built.components), JSON.stringify(built.answerKey), body.modelLetter, "draft", session.username
   ).run();
+  return { id, built, ...meta, status: "draft" };
+}
 
-  return json({ id, built, aiUsed: allAiUsed, anyAiUsed, aiDetail, status: "draft" });
+async function adminCreateCase(env, request, session) {
+  const body = await request.json().catch(() => ({}));
+  const required = ["title", "taskText", "keyInfo", "modelLetter"];
+  for (const f of required) {
+    if (!body[f] || (Array.isArray(body[f]) && body[f].length < 5)) return json({ error: `Missing field: ${f}` }, 400);
+  }
+  const formal = !!body.formal;
+  try {
+    const result = await aiBuildCase(env, body, formal);
+    return json(await saveBuiltCase(env, body, session, result.built, {
+      aiUsed: result.allAiUsed, anyAiUsed: result.anyAiUsed, aiDetail: result.aiDetail, usedManualFallback: false,
+    }));
+  } catch (e) {
+    const fallback = buildManualFallbackCase(body, formal);
+    return json(await saveBuiltCase(env, body, session, fallback, {
+      aiUsed: false, anyAiUsed: false, aiDetail: { failed: true, error: String(e?.message || e) }, usedManualFallback: true,
+    }));
+  }
+}
+
+async function adminCreateManualCase(env, request, session) {
+  const body = await request.json().catch(() => ({}));
+  const required = ["title", "taskText", "keyInfo", "modelLetter", "components"];
+  for (const f of required) {
+    if (!body[f] || (Array.isArray(body[f]) && body[f].length === 0)) return json({ error: `Missing field: ${f}` }, 400);
+  }
+  if (!Array.isArray(body.components) || body.components.length !== FIXED_COMPONENT_KEYS.length) return json({ error: "Manual case must contain exactly 13 parts." }, 400);
+  const built = buildManualCaseFromComponents(body, !!body.formal, body.components);
+  return json(await saveBuiltCase(env, body, session, built, { aiUsed: false, anyAiUsed: false, aiDetail: {}, usedManualFallback: true, manual: true }));
 }
 
 /**
@@ -1450,6 +1504,21 @@ function fallbackComponentSet(key, full, formal) {
   if (key === "signoff") return fallbackSignoffSet(formal);
   if (key === "name") return formal ? { correct: "Wei Ming Tan", distractors: ["Wei Ming", "W. M."] } : { correct: "Wei Ming", distractors: ["Wei Ming Tan", "Mr Tan"] };
   return { correct: "This is the most suitable sentence for this part.", distractors: ["This is an unsuitable sentence.", "This sentence does not fit the task."] };
+}
+
+function buildManualFallbackCase(body, formal) {
+  const keyInfo = Array.isArray(body.keyInfo) ? body.keyInfo.slice(0, 5) : [];
+  while (keyInfo.length < 5) keyInfo.push(`Relevant detail ${keyInfo.length + 1} from the task.`);
+  const scaffold = { taskText: body.taskText, task_text: body.taskText, stimulusPoints: keyInfo.map((text,i)=>({id:`s${i+1}`,text,relevant:true})), ownContentPrompt: body.ownContentPrompt || "Suggest one helpful idea for this situation.", ownContentKeywords: (body.ownContentIdeas || []).map(s=>[s]) };
+  const builds = FIXED_COMPONENT_KEYS.map(key => buildOptionComponent(key, COMPONENT_LABELS(key, formal), fallbackComponentSet(key, scaffold, formal)));
+  return { taskChunks: fallbackTaskChunks(body.taskText), stimulusPoints: scaffold.stimulusPoints, ownContentKeywords: scaffold.ownContentKeywords, components: builds.map(({correctId,...c})=>c), answerKey: {components:Object.fromEntries(builds.map(c=>[c.key,c.correctId])), paragraphBreaks:["purpose","keyinfo1","closing","signoff"]} };
+}
+
+function buildManualCaseFromComponents(body, formal, components) {
+  const clean = components.map((c,i)=>({ key:FIXED_COMPONENT_KEYS[i], label:String(c.label || COMPONENT_LABELS(FIXED_COMPONENT_KEYS[i], formal)).slice(0,120), options:["a","b","c"].map(id=>({id,text:String(c.options?.find(o=>o.id===id)?.text || "").trim().slice(0,500)})) }));
+  const answerComponents={};
+  components.forEach((c,i)=>answerComponents[FIXED_COMPONENT_KEYS[i]]=["a","b","c"].includes(c.correctId)?c.correctId:"a");
+  return { taskChunks:fallbackTaskChunks(body.taskText), stimulusPoints:(body.keyInfo||[]).slice(0,5).map((text,i)=>({id:`s${i+1}`,text:String(text).trim(),relevant:true})), ownContentKeywords:(body.ownContentIdeas||[]).map(s=>[s]), components:clean, answerKey:{components:answerComponents,paragraphBreaks:["purpose","keyinfo1","closing","signoff"]} };
 }
 
 async function aiBuildCase(env, body, formal) {
