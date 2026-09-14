@@ -126,7 +126,7 @@ async function renderDashboard(msg) {
     <div class="topline">
       <div>Signed in as <b>${escapeHtml(me.username)}</b> <span class="tag">${me.role === "admin" ? "Admin" : "Teacher"}</span></div>
       <div class="row">
-        <span class="hint" style="margin:0;">v1.5</span>
+        <span class="hint" style="margin:0;">v1.6</span>
         <button class="btn small" id="logoutBtn">Log out</button>
       </div>
     </div>
@@ -477,17 +477,12 @@ function renderTeacherList(container, teachers) {
 // ---------- case management ----------
 
 function regenerablePartsForCase(c) {
-  const parts = [
+  return [
+    ...((c.components || []).map((comp) => ({ key: comp.key, label: comp.label }))),
     { key: "taskChunks", label: "Task clue tags" },
     { key: "stimulus", label: "Evidence distractors" },
     { key: "ownContentKeywords", label: "Own-content keywords" },
   ];
-  for (const comp of c.components || []) {
-    if (comp.key === "purpose" || comp.key === "filler" || /^keyinfo\d+$/.test(comp.key)) {
-      parts.push({ key: comp.key, label: comp.label });
-    }
-  }
-  return parts;
 }
 
 function renderCaseList(cases) {
@@ -503,6 +498,7 @@ function renderCaseList(cases) {
         <div class="row">
           ${c.status !== "published" ? `<button class="btn small primary" data-action="publish" data-id="${c.id}">Publish</button>` : ""}
           <button class="btn small" data-action="regen-toggle" data-id="${c.id}">🔄 Regenerate a part</button>
+          <button class="btn small" data-action="edit-toggle" data-id="${c.id}">✏️ Edit 13 parts</button>
           <button class="btn small" data-action="delete" data-id="${c.id}">Delete</button>
         </div>
       </div>
@@ -510,6 +506,7 @@ function renderCaseList(cases) {
         Built by ${escapeHtml(c.created_by || "unknown")}${c.approved_by ? ` · Published by ${escapeHtml(c.approved_by)}` : ""}
       </p>
       <div class="regen-panel" data-panel-for="${c.id}" style="display:none;"></div>
+      <div class="edit-panel" data-edit-for="${c.id}" style="display:none;"></div>
     </div>
   `).join("");
 
@@ -541,6 +538,39 @@ function renderCaseList(cases) {
       panel.style.display = isOpen ? "none" : "flex";
       if (!isOpen) renderRegenPanel(panel, c);
     });
+  });
+
+  $$('button[data-action="edit-toggle"]', el).forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const caseId = btn.dataset.id; const c = cases.find((x) => x.id === caseId);
+      const panel = $(`[data-edit-for="${caseId}"]`, el);
+      if (panel.style.display === "none") renderEditPanel(panel, c); else panel.style.display = "none";
+    });
+  });
+}
+
+function renderEditPanel(panel, c) {
+  panel.style.display = "block";
+  const comps = (c.components || []).slice(0, 13);
+  panel.innerHTML = `<h4 style="margin:0 0 8px;color:var(--navy);">Edit all 13 Step 4 parts</h4>` + comps.map((comp, idx) => `
+    <div class="component" style="margin-bottom:9px;">
+      <label>${idx+1}. Label</label><input type="text" data-label="${escapeHtml(comp.key)}" value="${escapeHtmlAttr(comp.label)}" />
+      ${comp.options.map((o) => `<div class="row" style="margin-top:6px;"><input type="radio" name="correct-${c.id}-${comp.key}" data-correct="${escapeHtml(comp.key)}" value="${o.id}" ${((c.answerKey?.components?.[comp.key] || "a") === o.id) ? "checked" : ""}/><input type="text" data-opt="${escapeHtml(comp.key)}-${o.id}" value="${escapeHtmlAttr(o.text)}" /></div>`).join("")}
+    </div>
+  `).join("") + `<div class="row"><button class="btn small primary" data-action="save-components">💾 Save changes</button><span class="edit-status hint"></span></div>`;
+  panel.querySelector('[data-action="save-components"]').addEventListener("click", async () => {
+    const components = comps.map((comp) => ({
+      key: comp.key,
+      label: panel.querySelector(`[data-label="${comp.key}"]`).value.trim(),
+      options: ["a","b","c"].map((id) => ({ id, text: panel.querySelector(`[data-opt="${comp.key}-${id}"]`).value.trim() })),
+      correctId: panel.querySelector(`[data-correct="${comp.key}"]:checked`)?.value || "a",
+    }));
+    const status = panel.querySelector('.edit-status');
+    try {
+      await api(`/api/admin/cases/${c.id}/components`, { method:"PUT", headers:{"content-type":"application/json"}, body:JSON.stringify({components}) });
+      status.textContent = "Saved. Case returned to draft for review.";
+      const data = await api("/api/admin/cases"); renderCaseList(data.cases || []);
+    } catch (e) { status.textContent = "Failed: " + e.message; }
   });
 }
 
@@ -626,21 +656,24 @@ function renderForm(form) {
     row.querySelector("button").addEventListener("click", () => row.remove());
     keyInfoList.appendChild(row);
   }
-  addKeyInfoRow(); addKeyInfoRow(); addKeyInfoRow();
-  $("#addKeyInfo", form).addEventListener("click", () => addKeyInfoRow());
+  addKeyInfoRow(); addKeyInfoRow(); addKeyInfoRow(); addKeyInfoRow(); addKeyInfoRow();
+  $("#addKeyInfo", form).addEventListener("click", () => { if ($$("#keyInfoList input", form).length < 5) addKeyInfoRow(); });
 
   $("#submitCase", form).addEventListener("click", async () => {
     const title = $("#f_title", form).value.trim();
     const taskText = $("#f_task", form).value.trim();
     const modelLetter = $("#f_model", form).value.trim();
-    const keyInfo = $$("#keyInfoList input", form).map((i) => i.value.trim()).filter(Boolean);
+    const keyInfo = $$("#keyInfoList input", form).map((i) => i.value.trim());
+    while (keyInfo.length < 5) keyInfo.push("");
+    if (keyInfo.length > 5) keyInfo.length = 5;
+    const usableKeyInfo = keyInfo.filter(Boolean);
     const formal = $("input[name=formal]:checked", form).value === "1";
     const ownContentPrompt = $("#f_ownprompt", form).value.trim();
     const ownContentIdeas = $("#f_ownideas", form).value.split("\n").map((s) => s.trim()).filter(Boolean);
 
     const msgEl = $("#formMsg", form);
-    if (!title || !taskText || !modelLetter || keyInfo.length === 0) {
-      msgEl.innerHTML = `<div class="msg error">Please fill in title, question prompt, at least one key info point, and the model letter.</div>`;
+    if (!title || !taskText || !modelLetter || usableKeyInfo.length < 5) {
+      msgEl.innerHTML = `<div class="msg error">Please fill in title, question prompt, all 5 key information points, and the model letter.</div>`;
       return;
     }
     const btn = $("#submitCase", form);
@@ -650,7 +683,7 @@ function renderForm(form) {
       const res = await api("/api/admin/cases", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ title, taskText, keyInfo, formal, ownContentPrompt, ownContentIdeas, modelLetter, imageData }),
+        body: JSON.stringify({ title, taskText, keyInfo: usableKeyInfo, formal, ownContentPrompt, ownContentIdeas, modelLetter, imageData }),
       });
       const aiSummary = res.aiUsed
         ? "fully AI-assisted"

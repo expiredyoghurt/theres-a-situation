@@ -270,7 +270,7 @@
 
 <div class="wrap" id="app"></div>
 
-<div class="footer-link"><a href="/admin.html">Teacher / Admin tools →</a> <span style="color:#5b6a78;">· v1.5</span></div>
+<div class="footer-link"><a href="/admin.html">Teacher / Admin tools →</a> <span style="color:#5b6a78;">· v1.6</span></div>
 
 <script>
 const $ = (sel, el=document) => el.querySelector(sel);
@@ -300,6 +300,7 @@ let state = {
   ownContent: "",
   componentChoices: {},
   signOffName: "",
+  componentResponses: {},
   paragraphBreaks: new Set(),
   result: null,
 };
@@ -323,6 +324,7 @@ function resetCaseState() {
   state.componentChoices = {};
   state.paragraphBreaks = new Set();
   state.signOffName = "";
+  state.componentResponses = {};
   state.result = null;
 }
 
@@ -658,100 +660,71 @@ function renderHunch(body, c) {
 function renderDraft(body, c) {
   body.innerHTML = `
     <h2 class="step-title">✍️ Step 4 — Draft Your Report</h2>
-    <p class="step-instr">Pick the best option for each part of your letter. Tick "start a new paragraph" where a fresh paragraph should begin.</p>
+    <p class="step-instr">For every part, choose one of the 3 suggestions <b>or type your own response</b>. Use the paragraph checkbox where a new paragraph should begin.</p>
+    <div class="prompt-box">Your audience: ${c.formal ? "formal" : "informal"} register. Every part below is a chance to practise making your own writing choices.</div>
     <div id="components"></div>
-    <div class="component signoff-name-field">
-      <div class="label">${c.formal ? "Sign off with your first AND last name" : "Sign off with your first name"}</div>
-      <input type="text" id="signOffNameInput" maxlength="60"
-        placeholder="${c.formal ? "e.g. Wei Ming Tan" : "e.g. Wei Ming"}"
-        value="${escapeHtml(state.signOffName)}"/>
-      <p class="field-note">${c.formal ? "Formal letters are signed off with a full name." : "First name is fine for an informal note."}</p>
-    </div>
     <h3 style="color:var(--navy);font-size:15px;margin:18px 0 6px;">📄 Live preview</h3>
     <div class="letter-preview" id="preview"></div>
   `;
   const compsEl = $("#components", body);
   compsEl.innerHTML = c.components.map((comp, idx) => `
-    <div class="component" data-key="${comp.key}">
-      <div class="label">${escapeHtml(comp.label)}</div>
-      ${comp.options.map((o) => `
-        <button class="option ${state.componentChoices[comp.key] === o.id ? "picked" : ""}" data-oid="${o.id}">${escapeHtml(o.text)}</button>
-      `).join("")}
-      ${idx > 0 ? `
-        <label class="para-toggle">
-          <input type="checkbox" data-parakey="${comp.key}" ${state.paragraphBreaks.has(comp.key) ? "checked" : ""}/>
-          ¶ Start a new paragraph before this
-        </label>
-      ` : ""}
+    <div class="component" data-key="${escapeHtml(comp.key)}">
+      <div class="label">${idx + 1}. ${escapeHtml(comp.label)}</div>
+      ${comp.options.map((o) => `<button class="option ${state.componentChoices[comp.key] === o.id ? "picked" : ""}" data-oid="${o.id}">${escapeHtml(o.text)}</button>`).join("")}
+      <label style="margin-top:9px;font-size:12px;">Or write your own:</label>
+      <textarea class="custom-response" data-response-key="${escapeHtml(comp.key)}" maxlength="500" placeholder="Type your own response…">${escapeHtml(state.componentResponses[comp.key] || "")}</textarea>
+      <p class="field-note">Typing here selects “My response” instead of the 3 options.</p>
+      ${idx > 0 ? `<label class="para-toggle"><input type="checkbox" data-parakey="${escapeHtml(comp.key)}" ${state.paragraphBreaks.has(comp.key) ? "checked" : ""}/> ¶ Start a new paragraph before this</label>` : ""}
     </div>
   `).join("");
 
   $$(".component", compsEl).forEach((compEl) => {
     const key = compEl.dataset.key;
-    $$(".option", compEl).forEach((btn) => {
-      btn.addEventListener("click", () => {
-        state.componentChoices[key] = btn.dataset.oid;
-        persistProgress();
-        renderDraft(body, c);
-      });
+    $$(".option", compEl).forEach((btn) => btn.addEventListener("click", () => {
+      state.componentChoices[key] = btn.dataset.oid;
+      state.componentResponses[key] = "";
+      persistProgress(); renderDraft(body, c);
+    }));
+    const input = $(".custom-response", compEl);
+    input.addEventListener("input", (e) => {
+      state.componentResponses[key] = e.target.value;
+      if (e.target.value.trim()) state.componentChoices[key] = "custom";
+      else if (state.componentChoices[key] === "custom") delete state.componentChoices[key];
+      persistProgress(); updatePreview(c); updateDraftNav(body, c);
     });
     const cb = compEl.querySelector("[data-parakey]");
-    if (cb) cb.addEventListener("change", (e) => {
-      if (e.target.checked) state.paragraphBreaks.add(key);
-      else state.paragraphBreaks.delete(key);
-      persistProgress();
-      updatePreview(c);
-    });
+    if (cb) cb.addEventListener("change", (e) => { if (e.target.checked) state.paragraphBreaks.add(key); else state.paragraphBreaks.delete(key); persistProgress(); updatePreview(c); });
   });
-
-  const nameInput = $("#signOffNameInput", body);
-  nameInput.addEventListener("input", (e) => {
-    state.signOffName = e.target.value;
-    persistProgress();
-    updatePreview(c);
-    updateDraftNav(body, c);
-  });
-
-  updatePreview(c);
-  updateDraftNav(body, c);
+  updatePreview(c); updateDraftNav(body, c);
 }
 
-function isSignOffNameValid(name, formal) {
-  const trimmed = (name || "").trim();
-  if (!trimmed) return false;
-  return formal ? trimmed.split(/\s+/).filter(Boolean).length >= 2 : true;
+function updatePreview(c) {
+  let text = "";
+  for (const comp of c.components) {
+    const choice = state.componentChoices[comp.key];
+    const opt = comp.options.find((o) => o.id === choice);
+    const part = choice === "custom" ? (state.componentResponses[comp.key] || "").trim() : (opt ? opt.text : "");
+    if (!part) continue;
+    if (state.paragraphBreaks.has(comp.key) && text.length) text += "\n\n";
+    else if (text.length) text += " ";
+    text += part;
+  }
+  const el = $("#preview");
+  if (el) el.innerHTML = text ? escapeHtml(text).replace(/\n/g, "<br>") : `<span class="placeholder">Your report will appear here…</span>`;
+}
+
+function isComponentAnswered(comp) {
+  return !!state.componentChoices[comp.key] && (state.componentChoices[comp.key] !== "custom" || !!(state.componentResponses[comp.key] || "").trim());
 }
 
 function updateDraftNav(body, c) {
-  const allChosen = c.components.every((comp) => state.componentChoices[comp.key]);
-  const nameOk = isSignOffNameValid(state.signOffName, c.formal);
+  const allChosen = c.components.every(isComponentAnswered);
   navRow(body, {
     nextLabel: "Submit Report →",
-    nextDisabled: !allChosen || !nameOk,
+    nextDisabled: !allChosen,
     onBack: () => { state.step = 2; persistProgress(); render(); },
     onNext: async () => { await doSubmit(body, c); },
   });
-}
-
-function assembleLetterClient(c) {
-  let out = "";
-  for (const comp of c.components) {
-    const oid = state.componentChoices[comp.key];
-    const opt = comp.options.find((o) => o.id === oid);
-    if (!opt) continue;
-    if (state.paragraphBreaks.has(comp.key) && out.length) out += "\n\n";
-    else if (out.length) out += " ";
-    out += opt.text;
-  }
-  const name = (state.signOffName || "").trim();
-  if (name) out += (out.length ? "\n" : "") + name;
-  return out;
-}
-function updatePreview(c) {
-  const text = assembleLetterClient(c);
-  const el = $("#preview");
-  if (!el) return;
-  el.innerHTML = text ? escapeHtml(text).replace(/\n/g, "<br>") : `<span class="placeholder">Your letter will appear here as you choose options…</span>`;
 }
 
 async function doSubmit(body, c) {
@@ -769,8 +742,9 @@ async function doSubmit(body, c) {
         stimulusSelected: Array.from(state.stimulusSelected),
         ownContent: state.ownContent,
         componentChoices: state.componentChoices,
+        componentResponses: state.componentResponses,
         paragraphBreaks: Array.from(state.paragraphBreaks),
-        signOffName: (state.signOffName || "").trim(),
+        signOffName: ((state.componentChoices.name === "custom" ? state.componentResponses.name : (c.components.find(x => x.key === "name")?.options.find(o => o.id === state.componentChoices.name)?.text || "")) || "").trim(),
       }),
     });
     state.result = res;
