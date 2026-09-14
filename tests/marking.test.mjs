@@ -70,21 +70,21 @@ test("empty strings never divide by zero", () => {
 });
 
 console.log("buildOptionComponent");
-test("produces exactly 4 options and tracks the correct one", () => {
+test("produces exactly 3 options and tracks the correct one", () => {
   const comp = buildOptionComponent("test", "Test", { correct: "RIGHT", distractors: ["A", "B", "C"] });
-  assert.equal(comp.options.length, 4);
+  assert.equal(comp.options.length, 3);
   const correctOpt = comp.options.find((o) => o.id === comp.correctId);
   assert.equal(correctOpt.text, "RIGHT");
 });
-test("pads short distractor lists so there are always 4 options", () => {
+test("pads short distractor lists so there are always 3 options", () => {
   const comp = buildOptionComponent("test", "Test", { correct: "RIGHT", distractors: ["A"] });
-  assert.equal(comp.options.length, 4);
+  assert.equal(comp.options.length, 3);
 });
 test("every generated component key/label round-trips correctly across many shuffles", () => {
   for (let i = 0; i < 25; i++) {
     const comp = buildOptionComponent("keyinfo1", "Key information 1", { correct: "C", distractors: ["D1", "D2", "D3"] });
     const ids = comp.options.map((o) => o.id).sort();
-    assert.deepEqual(ids, ["a", "b", "c", "d"]);
+    assert.deepEqual(ids, ["a", "b", "c"]);
     assert.ok(comp.options.some((o) => o.id === comp.correctId && o.text === "C"));
   }
 });
