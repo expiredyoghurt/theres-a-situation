@@ -59,7 +59,7 @@
 
 import { DEMO_CASES } from "./demoCases.js";
 
-const APP_VERSION = "v1.7";
+const APP_VERSION = "v1.8";
 const SESSION_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 const AI_TIMEOUT_MS = 9000; // per-provider timeout before falling through the chain
 const REVIEW_COOLDOWN_HOURS = 20; // spaced-review: don't re-suggest a below-threshold case sooner than this
@@ -139,6 +139,10 @@ export default {
       const componentsMatch = path.match(/^\/api\/admin\/cases\/([a-zA-Z0-9_-]+)\/components$/);
       if (componentsMatch && request.method === "PUT") {
         return await requireAuth(env, request, (session) => adminSaveCaseComponents(env, request, componentsMatch[1], session));
+      }
+      const imageMatch = path.match(/^\/api\/admin\/cases\/([a-zA-Z0-9_-]+)\/image$/);
+      if (imageMatch && request.method === "PUT") {
+        return await requireAuth(env, request, (session) => adminUpdateCaseImage(env, request, imageMatch[1], session));
       }
       const delMatch = path.match(/^\/api\/admin\/cases\/([a-zA-Z0-9_-]+)$/);
       if (delMatch && request.method === "DELETE") {
@@ -1354,6 +1358,20 @@ async function adminCreateManualCase(env, request, session) {
  * `part` is one of: "taskChunks", "stimulus", "ownContentKeywords",
  * "purpose", "filler", or "keyinfoN" (matching that component's key).
  */
+async function adminUpdateCaseImage(env, request, caseId, session) {
+  const body = await request.json().catch(() => ({}));
+  const imageData = String(body.imageData || "");
+  if (!imageData) return json({ error: "imageData is required" }, 400);
+  if (!/^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(imageData)) {
+    return json({ error: "Unsupported image format. Use PNG, JPEG, WebP or GIF." }, 400);
+  }
+  if (imageData.length > 760000) return json({ error: "Image is too large. Keep it below about 500 KB before upload." }, 413);
+  const row = await env.DB.prepare("SELECT id FROM cases WHERE id = ?").bind(caseId).first();
+  if (!row) return json({ error: "Case not found" }, 404);
+  await env.DB.prepare("UPDATE cases SET image_data = ?, status = 'draft', approved_by = NULL, approved_at = NULL WHERE id = ?").bind(imageData, caseId).run();
+  return json({ ok: true, caseId, savedBy: session.username, status: "draft" });
+}
+
 async function adminSaveCaseComponents(env, request, caseId, session) {
   const body = await request.json().catch(() => ({}));
   const components = Array.isArray(body.components) ? body.components : [];
