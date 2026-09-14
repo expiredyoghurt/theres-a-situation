@@ -55,6 +55,15 @@ CREATE TABLE IF NOT EXISTS leaderboard (
 CREATE INDEX IF NOT EXISTS idx_leaderboard_score ON leaderboard(score DESC);
 CREATE INDEX IF NOT EXISTS idx_leaderboard_class ON leaderboard(player_class);
 
+
+-- Global student access switch. Set to 0 to hide ALL cases from pupils,
+-- including the built-in tutorial/sample cases; admin/teacher access remains.
+CREATE TABLE IF NOT EXISTS app_settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+INSERT OR IGNORE INTO app_settings (key, value) VALUES ('student_access_enabled', '1');
+
 -- Accounts: one row per admin/teacher login. Passwords are stored as a
 -- PBKDF2 hash + per-user salt (see hashPassword() in worker/index.js) —
 -- never as plaintext.

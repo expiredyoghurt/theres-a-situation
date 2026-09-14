@@ -1,4 +1,4 @@
-# Boss! There's a situation! (v1.6)
+# Boss! There's a situation! (v1.7)
 
 A detective-themed game that gamifies the PSLE English **Situational Writing**
 task (Purpose / Audience / Context, key information, and formal vs. informal
@@ -459,7 +459,7 @@ before deploying any change to the scoring functions.
   it's easy to read, host, and modify.
 
 
-## v1.6 change log
+## v1.7 change log
 
 - Step 4 “Draft Your Report” now has **13 parts**: Salutation (Audience), Greeting/Introduction, Purpose, Context, Key information 1–5, Own idea, Closing sentence, Sign-off, and Name.
 - Every Step 4 part presents **3 options plus a blank “write your own” field**.
@@ -468,4 +468,4 @@ before deploying any change to the scoring functions.
 - Teacher/admin users can **AI-regenerate any of the 13 parts individually**, as well as the existing task/evidence/own-content supporting pieces.
 - AI case generation now targets **five key-information points** and creates the expanded 13-part Step 4 structure.
 - Built-in tutorial cases are served through the same 13-part Step 4 interface.
-- Version bumped to **v1.6**.
+- Version bumped to **v1.7**.
