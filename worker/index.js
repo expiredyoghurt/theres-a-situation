@@ -1,6 +1,6 @@
 /**
  * Boss! There's a situation! — Worker
- * Version: v1.5
+ * Version: v1.6
  * Serves the API. Static files (public/) are served automatically by the
  * [assets] binding for any request this file doesn't explicitly handle.
  *
@@ -59,7 +59,7 @@
 
 import { DEMO_CASES } from "./demoCases.js";
 
-const APP_VERSION = "v1.5";
+const APP_VERSION = "v1.6";
 const SESSION_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 const AI_TIMEOUT_MS = 9000; // per-provider timeout before falling through the chain
 const REVIEW_COOLDOWN_HOURS = 20; // spaced-review: don't re-suggest a below-threshold case sooner than this
@@ -132,6 +132,10 @@ export default {
       const regenMatch = path.match(/^\/api\/admin\/cases\/([a-zA-Z0-9_-]+)\/regenerate$/);
       if (regenMatch && request.method === "POST") {
         return await requireAuth(env, request, () => adminRegenerateCasePart(env, request, regenMatch[1]));
+      }
+      const componentsMatch = path.match(/^\/api\/admin\/cases\/([a-zA-Z0-9_-]+)\/components$/);
+      if (componentsMatch && request.method === "PUT") {
+        return await requireAuth(env, request, (session) => adminSaveCaseComponents(env, request, componentsMatch[1], session));
       }
       const delMatch = path.match(/^\/api\/admin\/cases\/([a-zA-Z0-9_-]+)$/);
       if (delMatch && request.method === "DELETE") {
@@ -648,7 +652,7 @@ function toPublicCase(c) {
 }
 
 function fullCaseFromRow(row) {
-  return {
+  const full = {
     ...row,
     taskChunks: JSON.parse(row.task_chunks),
     stimulusPoints: JSON.parse(row.stimulus_points),
@@ -656,6 +660,39 @@ function fullCaseFromRow(row) {
     components: JSON.parse(row.components),
     answerKey: JSON.parse(row.answer_key),
   };
+  return ensureV16Components(full);
+}
+
+function ensureV16Components(full) {
+  if (Array.isArray(full.components) && JSON.stringify(full.components.map(c => c.key)) === JSON.stringify(FIXED_COMPONENT_KEYS)) return full;
+  const old = Object.fromEntries((full.components || []).map(c => [c.key, c]));
+  const oldAnswers = full.answerKey?.components || {};
+  const pts = (full.stimulusPoints || []).filter(p => p.relevant).map(p => p.text);
+  const formal = !!(full.formal ?? full.formal === 1);
+  const existingSet = (key, fallback, d1, d2) => {
+    const c = old[key]; const correctId = oldAnswers[key] || "a"; const correct = c?.options?.find(o => o.id === correctId)?.text || fallback;
+    const others = (c?.options || []).filter(o => o.id !== correctId).map(o => o.text).filter(Boolean);
+    return { correct, distractors: [others[0] || d1, others[1] || d2] };
+  };
+  const sets = {
+    salutation: existingSet("salutation", formal ? "Dear Sir/Madam," : "Hi there,", "Dear friend,", "Hey everyone,"),
+    greeting: existingSet("greeting", formal ? "I hope you are well." : "How are you? I hope you have been well.", "Hey! How's it going?", "I hereby wish to inform you of the following."),
+    purpose: existingSet("purpose", "I am writing to tell you about this situation.", "I am writing about an unrelated matter.", "I am writing to complain about the weather."),
+    context: existingSet("filler", formal ? "I would like to explain the situation so that you have the necessary background." : "I thought I should explain what happened so you know the full story.", "This has nothing to do with the event.", "I have lots of homework tonight."),
+    keyinfo1: existingSet("keyinfo1", pts[0] || "The first important detail is included in the notice.", "The first detail is not needed.", "The first detail is completely different."),
+    keyinfo2: existingSet("keyinfo2", pts[1] || "The second important detail is included in the notice.", "The second detail is not needed.", "The second detail is completely different."),
+    keyinfo3: existingSet("keyinfo3", pts[2] || "The third important detail is included in the notice.", "The third detail is not needed.", "The third detail is completely different."),
+    keyinfo4: existingSet("keyinfo4", pts[3] || "The fourth important detail is included in the notice.", "The fourth detail is not needed.", "The fourth detail is completely different."),
+    keyinfo5: existingSet("keyinfo5", pts[4] || "The fifth important detail is included in the notice.", "The fifth detail is not needed.", "The fifth detail is completely different."),
+    ownIdea: { correct: full.ownContentKeywords?.[0]?.[0] || "suggest a helpful idea", distractors: [full.ownContentKeywords?.[1]?.[0] || "offer another practical way to help", full.ownContentKeywords?.[2]?.[0] || "contribute in another suitable way"] },
+    closing: existingSet("closing", formal ? "Thank you for considering my suggestion." : "Hope to hear from you soon!", "This is the end of an unrelated topic.", "I am not sure what else to say."),
+    signoff: existingSet("signoff", formal ? "Yours sincerely," : "Best,", "Yours faithfully,", "Love and hugs forever,"),
+    name: { correct: formal ? "Wei Ming Tan" : "Wei Ming", distractors: [formal ? "Wei Ming" : "Wei Ming Tan", "Mr Tan"] },
+  };
+  const builds = FIXED_COMPONENT_KEYS.map(key => buildOptionComponent(key, COMPONENT_LABELS(key, formal), sets[key]));
+  full.components = builds.map(({correctId, ...c}) => c);
+  full.answerKey = { components: Object.fromEntries(builds.map(c => [c.key, c.correctId])), paragraphBreaks: full.answerKey?.paragraphBreaks || ["purpose", "keyinfo1", "closing", "signoff"] };
+  return full;
 }
 
 async function findFullCase(env, id) {
@@ -746,11 +783,23 @@ async function submitCase(env, request, id) {
   breakdown.stimulusKeyInfo = { score: Math.min(w.stimulusKeyInfo, stimulusScore), max: w.stimulusKeyInfo };
 
   // 3) Letter component MCQs (proportional)
-  const componentChoices = body.componentChoices || {}; // { key: optionId }
+  const componentChoices = body.componentChoices || {}; // { key: optionId | "custom" }
+  const componentResponses = body.componentResponses || {}; // { key: typed response }
   const compKeys = Object.keys(full.answerKey.components || {});
   let compCorrect = 0;
   for (const key of compKeys) {
-    if (componentChoices[key] === full.answerKey.components[key]) compCorrect++;
+    const expected = full.answerKey.components[key];
+    if (componentChoices[key] === expected) {
+      compCorrect++;
+      continue;
+    }
+    if (componentChoices[key] === "custom") {
+      const typed = String(componentResponses[key] || "").trim();
+      const comp = full.components.find((c) => c.key === key);
+      const correctText = comp?.options?.find((o) => o.id === expected)?.text || "";
+      const sim = jaccardSimilarity(typed, correctText);
+      if (typed && (sim >= 0.45 || (key === "ownIdea" && scoreOwnContentByKeyword(typed, full.ownContentKeywords, 1) >= 0.5))) compCorrect++;
+    }
   }
   const compScore = compKeys.length ? Math.round((compCorrect / compKeys.length) * w.letterChoices) : 0;
   breakdown.letterChoices = { score: compScore, max: w.letterChoices, correctCount: compCorrect, total: compKeys.length };
@@ -779,7 +828,7 @@ async function submitCase(env, request, id) {
   const ownNeedsAi = ownContent.trim().length > 0 && ownRatio > 0.15 && ownRatio < 0.85;
 
   // 6) AI holistic read of the assembled letter vs model answer
-  const assembledLetter = assembleLetter(full, componentChoices, paragraphBreaks, signOffName);
+  const assembledLetter = assembleLetter(full, componentChoices, paragraphBreaks, signOffName, componentResponses);
   const holisticFallbackScore = Math.round(jaccardSimilarity(assembledLetter, full.model_letter) * w.overallQuality);
   const holisticRatio = w.overallQuality > 0 ? holisticFallbackScore / w.overallQuality : 0;
   const holisticNeedsAi = holisticRatio > 0.15 && holisticRatio < 0.85;
@@ -842,12 +891,12 @@ function scoreOwnContentByKeyword(text, keywordGroups, max) {
   return Math.round(Math.min(1, ratio + (text.trim().length > 15 ? 0.15 : 0)) * max);
 }
 
-function assembleLetter(full, componentChoices, paragraphBreaksSet, signOffName) {
+function assembleLetter(full, componentChoices, paragraphBreaksSet, signOffName, componentResponses = {}) {
   let out = "";
   for (const comp of full.components) {
     const chosenId = componentChoices[comp.key];
     const opt = comp.options.find((o) => o.id === chosenId);
-    const text = opt ? opt.text : "";
+    const text = chosenId === "custom" ? String(componentResponses[comp.key] || "").trim() : (opt ? opt.text : "");
     if (!text) continue;
     if (paragraphBreaksSet.has(comp.key) && out.length) out += "\n\n";
     else if (out.length) out += " ";
@@ -1251,69 +1300,62 @@ async function adminCreateCase(env, request, session) {
  * `part` is one of: "taskChunks", "stimulus", "ownContentKeywords",
  * "purpose", "filler", or "keyinfoN" (matching that component's key).
  */
+async function adminSaveCaseComponents(env, request, caseId, session) {
+  const body = await request.json().catch(() => ({}));
+  const components = Array.isArray(body.components) ? body.components : [];
+  const row = await env.DB.prepare("SELECT * FROM cases WHERE id = ?").bind(caseId).first();
+  if (!row) return json({ error: "Case not found" }, 404);
+  if (components.length !== 13) return json({ error: "Exactly 13 draft components are required." }, 400);
+  const clean = [];
+  const answer = { components: {}, paragraphBreaks: JSON.parse(row.answer_key || "{}")?.paragraphBreaks || [] };
+  for (const c of components) {
+    if (!c || !c.key || !c.label || !Array.isArray(c.options) || c.options.length !== 3 || c.options.some((o) => !o || !String(o.text || "").trim())) {
+      return json({ error: "Each component needs a key, label, and exactly 3 non-empty options." }, 400);
+    }
+    const options = c.options.map((o, i) => ({ id: String.fromCharCode(97 + i), text: String(o.text).trim().slice(0, 500) }));
+    const correctId = String(c.correctId || "a");
+    if (!options.some((o) => o.id === correctId)) return json({ error: `Invalid correct option for ${c.key}.` }, 400);
+    clean.push({ key: String(c.key), label: String(c.label).slice(0, 120), options });
+    answer.components[String(c.key)] = correctId;
+  }
+  const keys = clean.map((c) => c.key);
+  if (new Set(keys).size !== 13 || JSON.stringify(keys) !== JSON.stringify(FIXED_COMPONENT_KEYS)) {
+    return json({ error: "Components must be in the standard 13-part order." }, 400);
+  }
+  await env.DB.prepare("UPDATE cases SET components = ?, answer_key = ?, status = 'draft', approved_by = NULL, approved_at = NULL WHERE id = ?")
+    .bind(JSON.stringify(clean), JSON.stringify(answer), caseId).run();
+  return json({ ok: true, savedBy: session.username, components: clean, answerKey: answer });
+}
+
 async function adminRegenerateCasePart(env, request, caseId) {
   const body = await request.json().catch(() => ({}));
   const part = (body.part || "").toString();
   const row = await env.DB.prepare("SELECT * FROM cases WHERE id = ?").bind(caseId).first();
   if (!row) return json({ error: "Case not found" }, 404);
-
   const full = fullCaseFromRow(row);
-  const formal = !!row.formal;
-  const taskText = row.task_text;
-  const keyInfo = full.stimulusPoints.filter((p) => p.relevant).map((p) => p.text);
-
-  if (part === "taskChunks") {
-    const chunks = await aiTaskChunks(env, taskText);
-    full.taskChunks = chunks || fallbackTaskChunks(taskText);
+  if (FIXED_COMPONENT_KEYS.includes(part)) {
+    const generated = await aiSingleComponent(env, part, full, !!row.formal);
+    const current = full.components.find((c) => c.key === part);
+    const label = current?.label || COMPONENT_LABELS(part, !!row.formal);
+    const newComp = buildOptionComponent(part, label, generated || fallbackComponentSet(part, full, !!row.formal));
+    full.components = full.components.map((c) => c.key === part ? { key: part, label, options: newComp.options } : c);
+    full.answerKey.components[part] = newComp.correctId;
+  } else if (part === "taskChunks") {
+    full.taskChunks = (await aiTaskChunks(env, row.task_text)) || fallbackTaskChunks(row.task_text);
   } else if (part === "stimulus") {
-    const extra = await aiStimulusDistractors(env, keyInfo, taskText);
-    full.stimulusPoints = [
-      ...keyInfo.map((text, i) => ({ id: `s${i + 1}`, text, relevant: true })),
-      ...(extra && extra.length ? extra : ["Extra flavour detail not required in your letter"])
-        .map((text, i) => ({ id: `sx${i + 1}`, text, relevant: false })),
-    ];
+    const keyInfo = full.stimulusPoints.filter((p) => p.relevant).map((p) => p.text);
+    const extra = await aiStimulusDistractors(env, keyInfo, row.task_text);
+    full.stimulusPoints = [...keyInfo.map((text, i) => ({ id: `s${i+1}`, text, relevant: true })), ...(extra || ["Extra flavour detail not required in your letter"]).map((text, i) => ({ id:`sx${i+1}`, text, relevant:false }))];
   } else if (part === "ownContentKeywords") {
-    // Note: the teacher's original acceptable-idea list isn't persisted
-    // separately from the built keyword groups, so a regenerate here
-    // asks the AI to suggest fresh plausible ideas from the prompt alone
-    // rather than replaying the teacher's original list verbatim.
-    const groups = await aiOwnContentKeywords(env, row.own_content_prompt, null);
-    full.ownContentKeywords = groups || [];
-  } else if (part === "purpose" || part === "filler") {
-    const set = part === "purpose" ? await aiPurposeOption(env, taskText, formal) : await aiFillerOption(env, taskText, formal);
-    const fallbackSet = part === "purpose" ? fallbackPurposeSet(taskText) : fallbackFillerSet(formal);
-    const label = full.components.find((c) => c.key === part)?.label || (part === "purpose" ? "Purpose" : "Additional context");
-    const newComp = buildOptionComponent(part, label, set || fallbackSet);
-    full.components = full.components.map((c) => (c.key === part ? { key: newComp.key, label: newComp.label, options: newComp.options } : c));
-    full.answerKey.components[part] = newComp.correctId;
-  } else if (/^keyinfo\d+$/.test(part)) {
-    const comp = full.components.find((c) => c.key === part);
-    if (!comp) return json({ error: "Component not found on this case" }, 404);
-    const correctId = full.answerKey.components[part];
-    const correctText = comp.options.find((o) => o.id === correctId)?.text || "";
-    const sets = await aiKeyInfoDistractorsBatch(env, [correctText.replace(/\.$/, "")], taskText);
-    const distractors = (sets && sets[0]) || fallbackKeyInfoDistractors();
-    const newComp = buildOptionComponent(part, comp.label, { correct: correctText, distractors });
-    full.components = full.components.map((c) => (c.key === part ? { key: newComp.key, label: newComp.label, options: newComp.options } : c));
-    full.answerKey.components[part] = newComp.correctId;
+    full.ownContentKeywords = (await aiOwnContentKeywords(env, row.own_content_prompt, null)) || full.ownContentKeywords || [];
   } else {
     return json({ error: `Unknown or non-regeneratable part: ${part}` }, 400);
   }
-
-  await env.DB.prepare(
-    "UPDATE cases SET task_chunks = ?, stimulus_points = ?, own_content_keywords = ?, components = ?, answer_key = ? WHERE id = ?"
-  ).bind(
-    JSON.stringify(full.taskChunks), JSON.stringify(full.stimulusPoints),
-    JSON.stringify(full.ownContentKeywords), JSON.stringify(full.components),
-    JSON.stringify(full.answerKey), caseId
-  ).run();
-
+  await env.DB.prepare("UPDATE cases SET task_chunks = ?, stimulus_points = ?, own_content_keywords = ?, components = ?, answer_key = ?, status = 'draft', approved_by = NULL, approved_at = NULL WHERE id = ?")
+    .bind(JSON.stringify(full.taskChunks), JSON.stringify(full.stimulusPoints), JSON.stringify(full.ownContentKeywords), JSON.stringify(full.components), JSON.stringify(full.answerKey), caseId).run();
   return json({ ok: true, part, built: full });
 }
 
-/** Aggregate provider health from ai_call_log over the last 24 hours, so
- * an admin can tell whether the primary provider is actually answering
- * or every request is silently falling through the chain to a backup. */
 async function adminAiHealth(env) {
   try {
     const { results } = await env.DB.prepare(
@@ -1344,92 +1386,102 @@ async function adminAiHealth(env) {
  * so the admin UI can show partial-success accurately instead of a
  * single all-or-nothing flag.
  */
+const FIXED_COMPONENT_KEYS = [
+  "salutation", "greeting", "purpose", "context", "keyinfo1", "keyinfo2", "keyinfo3", "keyinfo4", "keyinfo5", "ownIdea", "closing", "signoff", "name"
+];
+
+function COMPONENT_LABELS(key, formal) {
+  return ({
+    salutation: "Salutation (Audience)",
+    greeting: formal ? "Introduction (formal)" : "Greeting (informal)",
+    purpose: "Purpose",
+    context: "Context",
+    keyinfo1: "Key information 1", keyinfo2: "Key information 2", keyinfo3: "Key information 3", keyinfo4: "Key information 4", keyinfo5: "Key information 5",
+    ownIdea: "Own idea",
+    closing: "Closing sentence",
+    signoff: "Sign-off",
+    name: "Name",
+  })[key] || key;
+}
+
+function normaliseComponentSet(set) {
+  if (!set || typeof set.correct !== "string" || !Array.isArray(set.distractors)) return null;
+  const distractors = set.distractors.filter((s) => typeof s === "string" && s.trim()).slice(0, 2);
+  if (!set.correct.trim() || distractors.length < 2) return null;
+  return { correct: set.correct.trim(), distractors };
+}
+
+async function aiSingleComponent(env, key, full, formal) {
+  const taskText = full.taskText || full.task_text || "";
+  const keyInfo = full.stimulusPoints.filter((p) => p.relevant).map((p) => p.text);
+  let instruction = "";
+  if (/^keyinfo\d+$/.test(key)) {
+    const n = Number(key.replace("keyinfo", ""));
+    const target = keyInfo[n - 1] || "Add a relevant detail from the task.";
+    instruction = `The correct sentence must convey this required information: ${JSON.stringify(target)}`;
+  } else if (key === "salutation") instruction = `Write a suitable salutation for the stated audience. Formal register: ${formal}.`;
+  else if (key === "greeting") instruction = formal ? "Write a brief formal introductory sentence before the purpose, without repeating the purpose." : "Write a brief friendly informal greeting sentence before the purpose.";
+  else if (key === "purpose") instruction = "Write the purpose of the letter clearly in one sentence.";
+  else if (key === "context") instruction = "Write one concise sentence that gives the key situation/background the recipient needs.";
+  else if (key === "ownIdea") instruction = `Suggest one strong pupil-generated idea answering: ${full.ownContentPrompt || full.own_content_prompt || "the own-content question"}.`;
+  else if (key === "closing") instruction = formal ? "Write a polite formal closing sentence." : "Write a friendly informal closing sentence.";
+  else if (key === "signoff") instruction = `Write the most appropriate sign-off phrase for a ${formal ? "formal" : "informal"} letter.`;
+  else if (key === "name") instruction = `Provide a natural example ${formal ? "first-and-last" : "first"} name that can illustrate the required format. Do not add labels.`;
+  else return null;
+  const prompt = `PSLE Situational Writing. Task: "${taskText}"\nRegister: ${formal ? "FORMAL" : "INFORMAL"}.\nPart: ${COMPONENT_LABELS(key, formal)}.\n${instruction}\nReturn STRICT JSON only: {"correct":"...","distractors":["...","..."]}. The two distractors should be plausible but clearly less suitable/wrong for this exact part. Keep sentences pupil-friendly and concise.`;
+  return normaliseComponentSet(await aiSmallJson(env, prompt, 260));
+}
+
+function fallbackComponentSet(key, full, formal) {
+  if (key === "salutation") return fallbackSalutationSet(formal);
+  if (key === "greeting") return formal ? { correct: "I hope you are well.", distractors: ["Hey! How's it going?", "What is up, everyone?"] } : { correct: "How are you? I hope you have been well.", distractors: ["Dear Sir/Madam, I write regarding this matter.", "I hereby wish to inform you of the following."] };
+  if (key === "purpose") return fallbackPurposeSet(full.taskText || full.task_text || "You are writing to respond to the situation.");
+  if (key === "context") return { correct: formal ? "I would like to explain the situation so that you have the necessary background." : "I thought I should explain what happened so you know the full story." , distractors: ["The weather has been strange lately.", "I have lots of homework to finish tonight."] };
+  if (/^keyinfo\d+$/.test(key)) {
+    const n = Number(key.replace("keyinfo", "")); const pts = full.stimulusPoints.filter((p) => p.relevant).map((p) => p.text); const correct = pts[n-1] || `The fifth detail is relevant to the situation.`;
+    return { correct: correct.endsWith(".") ? correct : correct + ".", distractors: fallbackKeyInfoDistractors().slice(0,2) };
+  }
+  if (key === "ownIdea") {
+    const groups = full.ownContentKeywords || []; const ideas = groups.slice(0,3).map((g) => g[0]).filter(Boolean);
+    while (ideas.length < 3) ideas.push(["suggest a helpful idea", "offer another practical way to help", "contribute in another suitable way"][ideas.length]);
+    return { correct: ideas[0], distractors: ideas.slice(1,3) };
+  }
+  if (key === "closing") return formal ? { correct: "Thank you for considering my suggestion.", distractors: ["See you around!", "Okay bye, talk later!"] } : { correct: "Hope to hear from you soon!", distractors: ["Thank you for your formal consideration of this correspondence.", "I await your written response in due course."] };
+  if (key === "signoff") return fallbackSignoffSet(formal);
+  if (key === "name") return formal ? { correct: "Wei Ming Tan", distractors: ["Wei Ming", "W. M."] } : { correct: "Wei Ming", distractors: ["Wei Ming Tan", "Mr Tan"] };
+  return { correct: "This is the most suitable sentence for this part.", distractors: ["This is an unsuitable sentence.", "This sentence does not fit the task."] };
+}
+
 async function aiBuildCase(env, body, formal) {
-  const keyInfoCapped = body.keyInfo.slice(0, 4);
-
-  const [taskChunks, stimulusExtra, ownContentKeywords, purposeSet, fillerSet, keyInfoDistractorSets] = await Promise.all([
-    aiTaskChunks(env, body.taskText),
-    aiStimulusDistractors(env, body.keyInfo, body.taskText),
-    aiOwnContentKeywords(env, body.ownContentPrompt, body.ownContentIdeas),
-    aiPurposeOption(env, body.taskText, formal),
-    aiFillerOption(env, body.taskText, formal),
-    aiKeyInfoDistractorsBatch(env, keyInfoCapped, body.taskText),
-  ]);
-
-  const aiDetail = {
-    taskChunks: !!taskChunks,
-    stimulus: !!stimulusExtra,
-    ownContentKeywords: !!ownContentKeywords,
-    purpose: !!purposeSet,
-    filler: !!fillerSet,
-    keyInfo: keyInfoDistractorSets.map(Boolean),
-  };
-
-  // ---- assemble the final case, filling any gap with a deterministic template ----
-
-  const finalTaskChunks = taskChunks || fallbackTaskChunks(body.taskText);
-
-  const finalStimulusPoints = [
-    ...body.keyInfo.map((text, i) => ({ id: `s${i + 1}`, text, relevant: true })),
-    ...(stimulusExtra && stimulusExtra.length ? stimulusExtra : ["Extra flavour detail not required in your letter"])
-      .map((text, i) => ({ id: `sx${i + 1}`, text, relevant: false })),
-  ];
-
-  const finalOwnContentKeywords = ownContentKeywords || (body.ownContentIdeas || []).map((s) => [s]);
-
-  const salutation = buildOptionComponent("salutation", "Salutation", fallbackSalutationSet(formal));
-  const signoff = buildOptionComponent("signoff", "Sign-off", fallbackSignoffSet(formal));
-  const purpose = buildOptionComponent("purpose", "Purpose", purposeSet || fallbackPurposeSet(body.taskText));
-  const filler = buildOptionComponent("filler", "Additional context", fillerSet || fallbackFillerSet(formal));
-  const keyinfoComponents = keyInfoCapped.map((text, i) => {
-    const correct = text.endsWith(".") ? text : text + ".";
-    const distractors = keyInfoDistractorSets[i] || fallbackKeyInfoDistractors();
-    return buildOptionComponent(`keyinfo${i + 1}`, `Key information ${i + 1}`, { correct, distractors });
+  const keyInfo = Array.isArray(body.keyInfo) ? body.keyInfo.slice(0, 5) : [];
+  while (keyInfo.length < 5) keyInfo.push(`Relevant detail ${keyInfo.length + 1} from the task.`);
+  const scaffold = { taskText: body.taskText, task_text: body.taskText, stimulusPoints: keyInfo.map((text, i) => ({ id:`s${i+1}`, text, relevant:true })), ownContentPrompt: body.ownContentPrompt, own_content_prompt: body.ownContentPrompt, ownContentKeywords: (body.ownContentIdeas || []).map((s) => [s]) };
+  const componentResults = await Promise.all(FIXED_COMPONENT_KEYS.map((key) => aiSingleComponent(env, key, scaffold, formal)));
+  const aiDetail = {};
+  const componentBuilds = componentResults.map((set, i) => {
+    const key = FIXED_COMPONENT_KEYS[i]; aiDetail[key] = !!set;
+    return buildOptionComponent(key, COMPONENT_LABELS(key, formal), set || fallbackComponentSet(key, scaffold, formal));
   });
-
-  const components = [salutation, purpose, ...keyinfoComponents, filler, signoff];
-  const answerKey = {
-    components: Object.fromEntries(components.map((c) => [c.key, c.correctId])),
-    paragraphBreaks: ["purpose", "signoff"],
-  };
-  // strip the internal-only `correctId` helper field before storing
-  const cleanComponents = components.map(({ correctId, ...c }) => c);
-
-  const flatAiFlags = [aiDetail.taskChunks, aiDetail.stimulus, aiDetail.ownContentKeywords, aiDetail.purpose, aiDetail.filler, ...aiDetail.keyInfo];
-  const allAiUsed = flatAiFlags.every(Boolean);
-  const anyAiUsed = flatAiFlags.some(Boolean);
-
-  return {
-    built: {
-      taskChunks: finalTaskChunks,
-      stimulusPoints: finalStimulusPoints,
-      ownContentKeywords: finalOwnContentKeywords,
-      components: cleanComponents,
-      answerKey,
-    },
-    aiDetail,
-    allAiUsed,
-    anyAiUsed,
-  };
+  const components = componentBuilds.map(({ correctId, ...c }) => c);
+  const finalStimulusPoints = [...keyInfo.map((text, i) => ({ id:`s${i+1}`, text, relevant:true })), ...(await aiStimulusDistractors(env, keyInfo, body.taskText) || ["Extra detail not required in the letter", "Interesting background detail not needed here"]).map((text, i) => ({ id:`sx${i+1}`, text, relevant:false }))];
+  const taskChunks = await aiTaskChunks(env, body.taskText);
+  const ownContentKeywords = await aiOwnContentKeywords(env, body.ownContentPrompt, body.ownContentIdeas);
+  aiDetail.taskChunks = !!taskChunks; aiDetail.stimulus = true; aiDetail.ownContentKeywords = !!ownContentKeywords;
+  const answerKey = { components: Object.fromEntries(componentBuilds.map((c) => [c.key, c.correctId])), paragraphBreaks: ["purpose", "keyinfo1", "closing", "signoff"] };
+  const flatFlags = FIXED_COMPONENT_KEYS.map((k) => aiDetail[k]).concat([aiDetail.taskChunks, aiDetail.stimulus, aiDetail.ownContentKeywords]);
+  return { built: { taskChunks: taskChunks || fallbackTaskChunks(body.taskText), stimulusPoints: finalStimulusPoints, ownContentKeywords: ownContentKeywords || scaffold.ownContentKeywords, components, answerKey }, aiDetail, allAiUsed: flatFlags.every(Boolean), anyAiUsed: flatFlags.some(Boolean) };
 }
 
 /** Shared helper: turn {correct, distractors:[3]} into a shuffled 4-option
  * component, returning which option id ended up correct. */
 function buildOptionComponent(key, label, set) {
-  const distractors = (set.distractors || []).filter(Boolean).slice(0, 3);
-  while (distractors.length < 3) distractors.push("This does not fit what the letter needs here.");
+  const distractors = (set.distractors || []).filter(Boolean).slice(0, 2);
+  while (distractors.length < 2) distractors.push("This does not fit what the letter needs here.");
   const pool = [set.correct, ...distractors];
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  const ids = ["a", "b", "c", "d"];
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  const ids = ["a", "b", "c"];
   const correctIndex = pool.indexOf(set.correct);
-  return {
-    key, label,
-    options: pool.map((text, i) => ({ id: ids[i], text })),
-    correctId: ids[correctIndex === -1 ? 0 : correctIndex],
-  };
+  return { key, label, options: pool.map((text, i) => ({ id: ids[i], text })), correctId: ids[correctIndex === -1 ? 0 : correctIndex] };
 }
 
 // ---- focused AI calls, one small JSON object each ----

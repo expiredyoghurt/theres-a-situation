@@ -241,3 +241,40 @@ export const DEMO_CASES = [
       "Hi Wei Jie,\n\nI heard you missed the announcement about Sports Day, so I thought I'd fill you in and see if you want to join our house group! It's happening this Friday, 21 March, from 2 to 5pm at the School Field.\n\nDon't forget to bring your water bottle and your house T-shirt! There's also a class photo right after the closing ceremony, so try not to be late!\n\nSee you there!",
   },
 ];
+
+// v1.6: normalise the built-in tutorial cases to the same 13-part Step 4
+// structure used by teacher-created cases.
+function demoOption(key, correct, d1, d2) {
+  return { key, label: ({
+    salutation: "Salutation (Audience)", greeting: "Greeting / Introduction", purpose: "Purpose", context: "Context",
+    keyinfo1: "Key information 1", keyinfo2: "Key information 2", keyinfo3: "Key information 3", keyinfo4: "Key information 4", keyinfo5: "Key information 5",
+    ownIdea: "Own idea", closing: "Closing sentence", signoff: "Sign-off", name: "Name"
+  })[key], options: [{id:"a",text:correct},{id:"b",text:d1},{id:"c",text:d2}] };
+}
+
+function upgradeDemoCase(c) {
+  const old = Object.fromEntries((c.components || []).map(x => [x.key, x]));
+  const pts = (c.stimulusPoints || []).filter(x => x.relevant).map(x => x.text);
+  const formal = !!c.formal;
+  const opt = (key, fallback, d1, d2) => { const x = old[key]; return demoOption(key, x?.options?.find(o => o.id === "a")?.text || fallback, x?.options?.find(o => o.id === "b")?.text || d1, x?.options?.find(o => o.id === "c")?.text || d2); };
+  c.components = [
+    opt("salutation", formal ? "Dear Sir/Madam," : "Hi there,", "Dear friend,", "Hey everyone,"),
+    opt("greeting", formal ? "I hope you are well.": "How are you? I hope you have been well.", formal ? "Hey! How's it going?" : "Dear Sir/Madam, I write regarding this matter.", "I hereby wish to inform you of the following."),
+    opt("purpose", "I am writing to tell you about this situation.", "I am writing about an unrelated matter.", "I am writing to complain about the weather."),
+    opt("context", "I thought I should explain the situation so you know what happened.", "This has nothing to do with the event.", "I have lots of homework tonight."),
+    opt("keyinfo1", pts[0] || "The first important detail is included in the notice.", "The first detail is not needed.", "The first detail is completely different."),
+    opt("keyinfo2", pts[1] || "The second important detail is included in the notice.", "The second detail is not needed.", "The second detail is completely different."),
+    opt("keyinfo3", pts[2] || "The third important detail is included in the notice.", "The third detail is not needed.", "The third detail is completely different."),
+    opt("keyinfo4", pts[3] || "The fourth important detail is included in the notice.", "The fourth detail is not needed.", "The fourth detail is completely different."),
+    opt("keyinfo5", pts[4] || "The fifth important detail is included in the notice.", "The fifth detail is not needed.", "The fifth detail is completely different."),
+    opt("ownIdea", (c.ownContentKeywords?.[0]?.[0]) || "suggest a helpful idea", "offer another practical way to help", "contribute in another suitable way"),
+    opt("closing", formal ? "Thank you for considering my suggestion." : "Hope to hear from you soon!", "This is the end of an unrelated topic.", "I am not sure what else to say."),
+    opt("signoff", formal ? "Yours sincerely," : "Best,", "Yours faithfully,", "Love and hugs forever,"),
+    opt("name", formal ? "Wei Ming Tan" : "Wei Ming", formal ? "Wei Ming" : "Wei Ming Tan", "Mr Tan")
+  ];
+  c.answerKey = { components: Object.fromEntries(c.components.map(x => [x.key, "a"])), paragraphBreaks: c.answerKey?.paragraphBreaks || ["purpose", "keyinfo1", "closing", "signoff"] };
+  return c;
+}
+
+for (const c of DEMO_CASES) upgradeDemoCase(c);
+
