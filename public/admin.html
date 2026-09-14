@@ -126,7 +126,7 @@ async function renderDashboard(msg) {
     <div class="topline">
       <div>Signed in as <b>${escapeHtml(me.username)}</b> <span class="tag">${me.role === "admin" ? "Admin" : "Teacher"}</span></div>
       <div class="row">
-        <span class="hint" style="margin:0;">v1.6</span>
+        <span class="hint" style="margin:0;">v1.7</span>
         <button class="btn small" id="logoutBtn">Log out</button>
       </div>
     </div>
@@ -134,6 +134,7 @@ async function renderDashboard(msg) {
     <div class="panel" id="overviewPanel"></div>
     <div class="panel" id="rubricPanel"></div>
     <div class="panel" id="aiHealthPanel"></div>
+    <div class="panel" id="studentAccessPanel"></div>
     ${me.role === "admin" ? `<div class="panel" id="teachersPanel"></div>` : ""}
     <div class="panel">
       <h1>📁 Situation File Manager</h1>
@@ -151,6 +152,7 @@ async function renderDashboard(msg) {
   renderOverviewPanel($("#overviewPanel"));
   renderRubricPanel($("#rubricPanel"));
   renderAiHealthPanel($("#aiHealthPanel"));
+  renderStudentAccessPanel($("#studentAccessPanel"));
   if (me.role === "admin") renderTeachersPanel($("#teachersPanel"));
 
   renderForm($("#caseForm"));
@@ -474,6 +476,29 @@ function renderTeacherList(container, teachers) {
   });
 }
 
+async function renderStudentAccessPanel(panel) {
+  panel.innerHTML = `<h1>🎓 Student access</h1><p class="hint">This master switch controls whether pupils can see or open any case, including built-in sample/tutorial cases.</p><p>Loading…</p>`;
+  try {
+    const data = await api("/api/admin/student-access");
+    panel.innerHTML = `
+      <h1>🎓 Student access</h1>
+      <p class="hint">Switch this off to hide <b>all cases</b> from pupils. Teachers and admins can still manage and preview cases here.</p>
+      <label class="radio-row" style="margin-top:12px;"><input type="checkbox" id="studentAccessToggle" ${data.enabled ? "checked" : ""}/> Allow pupils to view and play cases</label>
+      <p id="studentAccessMsg" class="hint">${data.enabled ? "Pupils can currently see published cases and sample cases." : "Pupil access is OFF. No cases are exposed to the student interface."}</p>
+    `;
+    $("#studentAccessToggle", panel).addEventListener("change", async (e) => {
+      const enabled = e.target.checked; e.target.disabled = true;
+      try {
+        const res = await api("/api/admin/student-access", { method:"PUT", headers:{"content-type":"application/json"}, body:JSON.stringify({enabled}) });
+        $("#studentAccessMsg", panel).textContent = res.enabled ? "Pupils can currently see published cases and sample cases." : "Pupil access is OFF. No cases are exposed to the student interface.";
+      } catch (err) { e.target.checked = !enabled; alert(err.message); }
+      finally { e.target.disabled = false; }
+    });
+  } catch (e) {
+    panel.innerHTML = `<h1>🎓 Student access</h1><div class="msg error">Could not load: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
 // ---------- case management ----------
 
 function regenerablePartsForCase(c) {
@@ -631,7 +656,10 @@ function renderForm(form) {
     <label>Model / reference letter (full text)</label>
     <textarea class="tall" id="f_model" placeholder="Write the full model answer here — this is what pupils' letters are marked against."></textarea>
 
-    <button type="button" class="btn primary" id="submitCase">🤖 Build case with AI</button>
+    <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px;">
+      <button type="button" class="btn primary" id="submitCase">🤖 Build case with AI</button>
+      <button type="button" class="btn" id="manualCaseBtn">✍️ Create full case manually</button>
+    </div>
     <div id="formMsg"></div>
     <div id="preview"></div>
   `;
@@ -658,6 +686,37 @@ function renderForm(form) {
   }
   addKeyInfoRow(); addKeyInfoRow(); addKeyInfoRow(); addKeyInfoRow(); addKeyInfoRow();
   $("#addKeyInfo", form).addEventListener("click", () => { if ($$("#keyInfoList input", form).length < 5) addKeyInfoRow(); });
+
+  $("#manualCaseBtn", form).addEventListener("click", () => {
+    const title = $("#f_title", form).value.trim();
+    const taskText = $("#f_task", form).value.trim();
+    const modelLetter = $("#f_model", form).value.trim();
+    const keyInfo = $$("#keyInfoList input", form).map((i) => i.value.trim()).filter(Boolean);
+    const formal = $("input[name=formal]:checked", form).value === "1";
+    if (!title || !taskText || !modelLetter || keyInfo.length < 5) {
+      $("#formMsg", form).innerHTML = `<div class="msg error">Please fill in title, question prompt, all 5 key information points, and the model letter first.</div>`;
+      return;
+    }
+    const fallback = {};
+    const scaffold = { taskText, task_text: taskText, stimulusPoints: keyInfo.slice(0,5).map((text,i)=>({id:`s${i+1}`,text,relevant:true})), ownContentPrompt: $("#f_ownprompt", form).value.trim(), ownContentKeywords: $("#f_ownideas", form).value.split("\n").map(s=>[s.trim()]).filter(g=>g[0]) };
+    const keys = ["salutation","greeting","purpose","context","keyinfo1","keyinfo2","keyinfo3","keyinfo4","keyinfo5","ownIdea","closing","signoff","name"];
+    const labels = ["Salutation (Audience)", formal ? "Introduction (formal)" : "Greeting (informal)", "Purpose","Context","Key information 1","Key information 2","Key information 3","Key information 4","Key information 5","Own idea","Closing sentence","Sign-off","Name"];
+    const parts = keys.map((key,i)=>{ const set=fallbackComponentSet(key,scaffold,formal); fallback[key]={key,label:labels[i],options:["a","b","c"].map((id,j)=>({id,text:[set.correct,...set.distractors][j] || ""})),correctId:"a"}; return fallback[key]; });
+    $("#preview", form).innerHTML = `<h3>Manual case editor</h3><p class="hint">Edit all 13 parts below. Each part has 3 selectable options; pupils also get a separate blank field for their own response.</p><div id="manualEditor"></div><button type="button" class="btn primary" id="saveManualCase">💾 Save full manual case</button><span id="manualStatus" class="hint" style="margin-left:8px;"></span>`;
+    const editor=$("#manualEditor", form);
+    editor.innerHTML=parts.map((c,i)=>`<div class="component" style="margin-bottom:12px;"><label>${i+1}. Label</label><input data-mlabel="${c.key}" value="${escapeHtmlAttr(c.label)}"/><div class="row" style="margin-top:5px;"><input type="radio" name="mcorrect-${c.key}" value="a" checked/><input data-mopt="${c.key}-a" value="${escapeHtmlAttr(c.options[0].text)}"/></div><div class="row" style="margin-top:5px;"><input type="radio" name="mcorrect-${c.key}" value="b"/><input data-mopt="${c.key}-b" value="${escapeHtmlAttr(c.options[1].text)}"/></div><div class="row" style="margin-top:5px;"><input type="radio" name="mcorrect-${c.key}" value="c"/><input data-mopt="${c.key}-c" value="${escapeHtmlAttr(c.options[2].text)}"/></div><p class="hint">Pupils also receive a blank “write your own response” field automatically.</p></div>`).join("");
+    $("#saveManualCase", form).addEventListener("click", async ()=>{
+      const msg=$("#manualStatus",form); const components=keys.map((key)=>({key,label:$("[data-mlabel='"+key+"']",editor).value.trim(),options:["a","b","c"].map(id=>({id,text:$("[data-mopt='"+key+"-"+id+"']",editor).value.trim()})),correctId:$("input[name='mcorrect-"+key+"']:checked",editor)?.value||"a"}));
+      if (components.some(c=>!c.label || c.options.some(o=>!o.text))) { msg.textContent="Please complete every label and option."; return; }
+      msg.textContent="Saving…";
+      try {
+        const res=await api("/api/admin/cases/manual",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({title,taskText,keyInfo,formal,ownContentPrompt:$("#f_ownprompt",form).value.trim(),ownContentIdeas:$("#f_ownideas",form).value.split("\n").map(s=>s.trim()).filter(Boolean),modelLetter,imageData,components})});
+        $("#formMsg",form).innerHTML=`<div class="msg ok">Case created as a <b>draft</b> manually. Review it below, then publish it.</div>`;
+        msg.textContent="Saved.";
+        const data=await api("/api/admin/cases"); renderCaseList(data.cases||[]);
+      } catch(e){msg.textContent="Failed: "+e.message;}
+    });
+  });
 
   $("#submitCase", form).addEventListener("click", async () => {
     const title = $("#f_title", form).value.trim();
@@ -691,8 +750,11 @@ function renderForm(form) {
         ? "partially AI-assisted (some parts used a template — see the preview below for which)"
         : "built from templates (no AI provider was reachable)";
       msgEl.innerHTML = `
-        <div class="msg ok">Case "${escapeHtml(title)}" created as a <b>draft</b> — ${aiSummary}. Review the preview below, then publish it when you're happy (pupils can't see it until then).</div>
+        <div class="msg ok">Case "${escapeHtml(title)}" created as a <b>draft</b> — ${aiSummary}. Review the preview below, then publish it when you're happy.</div>
       `;
+      if (res.usedManualFallback) {
+        msgEl.innerHTML += `<div class="msg error">AI generation failed, so a complete template case was created instead. Use <b>Create full case manually</b> below to replace the generated text with your own content.</div>`;
+      }
       $("#preview", form).innerHTML = `
         <button type="button" class="btn primary" id="publishNewCase">✅ Publish this case</button>
         <h3 style="margin-top:16px;">What used AI vs. a template</h3>

@@ -303,6 +303,7 @@ let state = {
   componentResponses: {},
   paragraphBreaks: new Set(),
   result: null,
+  studentAccessEnabled: true,
 };
 
 const STEPS = ["Briefing", "Evidence", "Hunch", "Draft", "Verdict"];
@@ -335,6 +336,7 @@ async function loadHome() {
   try {
     const data = await api("/api/cases");
     state.cases = data.cases || [];
+    state.studentAccessEnabled = data.studentAccessEnabled !== false;
   } catch (e) { state.cases = []; }
   try {
     const qs = "?name=" + encodeURIComponent(state.playerName) + "&playerClass=" + encodeURIComponent(state.playerClass || "") + "&deviceId=" + encodeURIComponent(state.deviceId || "");
@@ -414,9 +416,11 @@ function renderHome() {
           </div>
         </div>
       ` : ""}
-      <div class="case-grid" id="caseGrid">
-        ${state.cases.length ? state.cases.map(caseCardHtml).join("") : `<p style="color:#5b4321">Loading case files…</p>`}
-      </div>
+      ${state.studentAccessEnabled === false ? `<div class="msg error" style="margin-top:16px;">Case access is currently disabled by your teacher. Please try again later.</div>` : `
+        <div class="case-grid" id="caseGrid">
+          ${state.cases.length ? state.cases.map(caseCardHtml).join("") : `<p style="color:#5b4321">No cases are currently available.</p>`}
+        </div>
+      `}
     </div>
   `;
   $("#switchDetective").addEventListener("click", (e) => {
