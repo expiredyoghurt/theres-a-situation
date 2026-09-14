@@ -21,9 +21,19 @@ CREATE TABLE IF NOT EXISTS cases (
   components    TEXT NOT NULL,     -- JSON array of letter-building blocks, see worker/index.js
   answer_key    TEXT NOT NULL,     -- JSON: correct option ids + correct paragraph breaks
   model_letter  TEXT NOT NULL,     -- full reference/model answer, used for AI similarity marking
-  status        TEXT NOT NULL DEFAULT 'published', -- published | draft
+  status        TEXT NOT NULL DEFAULT 'draft',    -- draft | published — AI-built cases start as draft
+  created_by    TEXT,             -- username of the teacher/admin who built it
+  approved_by   TEXT,             -- username of whoever published it (may differ from created_by)
+  approved_at   TEXT,             -- when it was published
   created_at    TEXT DEFAULT (datetime('now'))
 );
+-- If upgrading an existing DB, run these three once (existing cases were
+-- all auto-published, so backfill them as already-approved rather than
+-- hiding them):
+-- ALTER TABLE cases ADD COLUMN created_by TEXT;
+-- ALTER TABLE cases ADD COLUMN approved_by TEXT;
+-- ALTER TABLE cases ADD COLUMN approved_at TEXT;
+-- UPDATE cases SET approved_by = 'legacy', approved_at = created_at WHERE status = 'published' AND approved_by IS NULL;
 
 CREATE TABLE IF NOT EXISTS leaderboard (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,11 +44,13 @@ CREATE TABLE IF NOT EXISTS leaderboard (
   score       INTEGER NOT NULL,
   max_score   INTEGER NOT NULL DEFAULT 100,
   breakdown   TEXT,               -- JSON score breakdown, for the pupil's own review
+  device_id   TEXT NOT NULL DEFAULT '', -- random id stored in the pupil's browser — disambiguates same-name pupils
   created_at  TEXT DEFAULT (datetime('now'))
 );
--- If upgrading an existing DB, run these two once:
+-- If upgrading an existing DB, run these three once:
 -- ALTER TABLE leaderboard ADD COLUMN player_class TEXT NOT NULL DEFAULT '';
 -- ALTER TABLE leaderboard ADD COLUMN max_score INTEGER NOT NULL DEFAULT 100;
+-- ALTER TABLE leaderboard ADD COLUMN device_id TEXT NOT NULL DEFAULT '';
 
 CREATE INDEX IF NOT EXISTS idx_leaderboard_score ON leaderboard(score DESC);
 CREATE INDEX IF NOT EXISTS idx_leaderboard_class ON leaderboard(player_class);
@@ -83,3 +95,41 @@ CREATE TABLE IF NOT EXISTS rubric_config (
 INSERT OR IGNORE INTO rubric_config (id, mastery_threshold, weights) VALUES (
   1, 85, '{"taskIdentification":15,"stimulusKeyInfo":20,"ownContent":15,"letterChoices":30,"paragraphing":10,"overallQuality":10}'
 );
+
+-- One row per MCQ component choice a pupil makes on submission. Used to
+-- surface common misconceptions per class (which WRONG option a
+-- component gets picked most) on the admin dashboard — separate from
+-- `leaderboard`, which only stores the final aggregate score.
+CREATE TABLE IF NOT EXISTS option_picks (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  case_id        TEXT NOT NULL,
+  case_title     TEXT NOT NULL,
+  component_key  TEXT NOT NULL,
+  option_id      TEXT NOT NULL,
+  player_class   TEXT NOT NULL DEFAULT '',
+  created_at     TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_option_picks_case_component ON option_picks(case_id, component_key);
+CREATE INDEX IF NOT EXISTS idx_option_picks_class ON option_picks(player_class);
+
+
+-- Login lockout: tracks failed /api/admin/login attempts per username so
+-- the endpoint can't be brute-forced indefinitely. Successful logins
+-- reset the counter.
+CREATE TABLE IF NOT EXISTS login_attempts (
+  username      TEXT PRIMARY KEY,
+  fail_count    INTEGER NOT NULL DEFAULT 0,
+  locked_until  TEXT
+);
+
+-- Lightweight health log for the AI provider fallback chain — one row
+-- per provider attempt (success or failure), so an admin can tell
+-- whether the primary provider is actually answering or whether every
+-- request is silently falling through to a backup.
+CREATE TABLE IF NOT EXISTS ai_call_log (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  provider    TEXT NOT NULL,
+  ok          INTEGER NOT NULL,
+  created_at  TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_ai_call_log_created ON ai_call_log(created_at);

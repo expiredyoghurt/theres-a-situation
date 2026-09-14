@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Boss! There's a situation! — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#241a12; --paper:#EFE3C0; --paper-shadow:#c9b479; --navy:#1B2A38;
+    --red:#B23A2E; --green:#3E6B2E; --card:#FBF6E6; --gold:#C99A2E;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--navy);font-family:'Lexend',sans-serif;color:var(--ink);min-height:100vh;}
+  h1,h2,h3{font-family:'Special Elite',monospace;font-weight:400;color:var(--navy);}
+  .wrap{max-width:880px;margin:0 auto;padding:28px 16px 60px;}
+  .panel{background:var(--paper);border-radius:10px;padding:26px;box-shadow:0 14px 34px rgba(0,0,0,.35);border:1px solid var(--paper-shadow);margin-bottom:22px;}
+  label{display:block;font-size:13px;font-weight:600;margin:14px 0 5px;color:#5b4321;}
+  input[type=text], input[type=password], input[type=number], textarea, select{
+    width:100%;padding:10px 12px;border-radius:8px;border:1.5px solid var(--paper-shadow);
+    background:var(--card);font-family:'Lexend';font-size:14px;
+  }
+  textarea{min-height:70px;resize:vertical;}
+  textarea.tall{min-height:160px;}
+  .btn{font-family:'Special Elite',monospace;font-size:14px;padding:10px 18px;border-radius:8px;border:none;cursor:pointer;background:var(--navy);color:#fff;margin-top:8px;}
+  .btn.primary{background:var(--red);}
+  .btn.small{font-size:12px;padding:6px 12px;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .row{display:flex;gap:10px;align-items:center;}
+  .list-item{display:flex;gap:8px;margin-bottom:6px;align-items:center;}
+  .list-item input{flex:1;}
+  .list-item button{background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;}
+  .msg{padding:10px 14px;border-radius:8px;margin:12px 0;font-size:13.5px;}
+  .msg.error{background:#f6d6d0;color:#7a2016;}
+  .msg.ok{background:#dcedcf;color:#254b18;}
+  .radio-row{display:flex;gap:16px;margin-top:6px;}
+  .radio-row label{display:flex;align-items:center;gap:6px;font-weight:400;margin:0;}
+  .case-row{background:var(--card);border:1.5px solid var(--paper-shadow);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .imgprev{max-width:220px;display:block;margin-top:8px;border-radius:6px;border:1.5px solid var(--paper-shadow);}
+  .hint{font-size:12px;color:#7a6a45;margin-top:2px;}
+  a.back{color:#9fb2c9;font-size:12px;text-decoration:none;}
+  pre{background:#1b2a38;color:#cfe3d1;padding:12px;border-radius:8px;font-size:12px;overflow:auto;max-height:260px;}
+  .topline{display:flex;justify-content:space-between;align-items:center;color:#c8d3de;font-size:12.5px;margin-bottom:10px;}
+  .rubric-grid{display:grid;grid-template-columns:1fr 90px;gap:8px 12px;align-items:center;margin-top:10px;}
+  .rubric-grid label{margin:0;}
+  .rubric-total{font-family:'Special Elite',monospace;font-size:14px;margin-top:12px;color:var(--navy);}
+  table.heat{border-collapse:collapse;width:100%;font-size:13px;margin-top:12px;}
+  table.heat th, table.heat td{border:1px solid var(--paper-shadow);padding:7px 9px;text-align:center;}
+  table.heat th{background:var(--card);font-size:11.5px;color:#5b4321;}
+  table.heat td.name{text-align:left;font-weight:600;background:var(--card);}
+  table.heat td.avg{font-weight:700;}
+  .cell-empty{color:#a1895a;font-size:11px;}
+  .misconception-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+  .misconception-row{background:#fbeecb;border:1.5px solid #c99a2e;border-radius:8px;padding:9px 13px;font-size:13.5px;}
+  .ai-health-grid{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+  .ai-health-row{display:flex;justify-content:space-between;background:var(--card);border:1.5px solid var(--paper-shadow);border-radius:6px;padding:8px 12px;font-size:13.5px;}
+  .draft-badge{display:inline-block;background:#c99a2e;color:#fff;font-size:10.5px;padding:2px 8px;border-radius:10px;margin-left:8px;}
+  .regen-panel{margin-top:8px;padding-top:8px;border-top:1px dashed var(--paper-shadow);display:flex;flex-wrap:wrap;gap:6px;}
+  .teacher-row{background:var(--card);border:1.5px solid var(--paper-shadow);border-radius:8px;padding:10px 14px;margin-bottom:8px;}
+  .teacher-row .classes-input{margin-top:6px;}
+  .tag{display:inline-block;background:var(--navy);color:#fff;font-size:10.5px;padding:2px 8px;border-radius:10px;margin-left:8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">← Back to the game</a>
+  <div id="app" style="margin-top:14px;"></div>
+</div>
+<script>
+const $ = (s, el=document) => el.querySelector(s);
+const $$ = (s, el=document) => Array.from(el.querySelectorAll(s));
+const app = $("#app");
+let token = sessionStorage.getItem("adminToken") || null;
+let me = JSON.parse(sessionStorage.getItem("adminMe") || "null");
+
+async function api(path, opts={}) {
+  opts.headers = Object.assign({}, opts.headers, token ? { authorization: "Bearer " + token } : {});
+  const res = await fetch(path, opts);
+  if (res.status === 401) { token = null; me = null; sessionStorage.removeItem("adminToken"); sessionStorage.removeItem("adminMe"); renderLogin("Session expired — please log in again."); throw new Error("unauthorized"); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Request failed");
+  return data;
+}
+
+function escapeHtml(s) { return (s ?? "").toString().replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m])); }
+function escapeHtmlAttr(s) { return escapeHtml(s); }
+
+function renderLogin(msg) {
+  app.innerHTML = `
+    <div class="panel" style="max-width:380px;margin:40px auto;">
+      <h1>🔒 Boss's Office Access</h1>
+      <p class="hint">Teachers and admins only. Enter your credentials to manage case files.</p>
+      ${msg ? `<div class="msg error">${escapeHtml(msg)}</div>` : ""}
+      <label>Username</label>
+      <input type="text" id="u" autocomplete="username"/>
+      <label>Password</label>
+      <input type="password" id="p" autocomplete="current-password"/>
+      <button class="btn primary" id="loginBtn" style="width:100%;">Log in</button>
+      <p class="hint" style="margin-top:14px;">First time setting this up? Log in with the SEED_ADMIN_USERNAME / SEED_ADMIN_PASSWORD secrets you set in wrangler — that creates the first admin account automatically.</p>
+    </div>
+  `;
+  $("#loginBtn").addEventListener("click", async () => {
+    const username = $("#u").value, password = $("#p").value;
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Login failed");
+      token = data.token;
+      me = { username: data.username, role: data.role, classes: data.classes };
+      sessionStorage.setItem("adminToken", token);
+      sessionStorage.setItem("adminMe", JSON.stringify(me));
+      renderDashboard();
+    } catch (e) {
+      renderLogin(e.message);
+    }
+  });
+  $("#p").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#loginBtn").click(); });
+}
+
+async function renderDashboard(msg) {
+  app.innerHTML = `
+    <div class="topline">
+      <div>Signed in as <b>${escapeHtml(me.username)}</b> <span class="tag">${me.role === "admin" ? "Admin" : "Teacher"}</span></div>
+      <div class="row">
+        <span class="hint" style="margin:0;">v1.5</span>
+        <button class="btn small" id="logoutBtn">Log out</button>
+      </div>
+    </div>
+    ${msg ? `<div class="msg ${msg.error ? "error" : "ok"}">${escapeHtml(msg.text)}</div>` : ""}
+    <div class="panel" id="overviewPanel"></div>
+    <div class="panel" id="rubricPanel"></div>
+    <div class="panel" id="aiHealthPanel"></div>
+    ${me.role === "admin" ? `<div class="panel" id="teachersPanel"></div>` : ""}
+    <div class="panel">
+      <h1>📁 Situation File Manager</h1>
+      <h3>Existing practice cases</h3>
+      <p class="hint">Newly built cases start as <b>drafts</b> — pupils never see them until you review the preview and click <b>Publish</b>.</p>
+      <div id="caseList">Loading…</div>
+      <hr style="margin:26px 0;border:none;border-top:1.5px dashed var(--paper-shadow);"/>
+      <h3>➕ Upload a new practice</h3>
+      <p class="hint">Fill in the fields below. AI will build the clickable clues, MCQ letter options and marking key for you as a draft — review it below, regenerate any single part that doesn't read well, then publish it when you're happy.</p>
+      <form id="caseForm"></form>
+    </div>
+  `;
+  $("#logoutBtn").addEventListener("click", () => { token = null; me = null; sessionStorage.removeItem("adminToken"); sessionStorage.removeItem("adminMe"); renderLogin(); });
+
+  renderOverviewPanel($("#overviewPanel"));
+  renderRubricPanel($("#rubricPanel"));
+  renderAiHealthPanel($("#aiHealthPanel"));
+  if (me.role === "admin") renderTeachersPanel($("#teachersPanel"));
+
+  renderForm($("#caseForm"));
+  try {
+    const data = await api("/api/admin/cases");
+    renderCaseList(data.cases || []);
+  } catch (e) { $("#caseList").innerHTML = `<p class="hint">Could not load cases: ${escapeHtml(e.message)}</p>`; }
+}
+
+// ---------- AI provider health ----------
+
+async function renderAiHealthPanel(panel) {
+  panel.innerHTML = `<h1>🩺 AI Provider Health (24h)</h1><p class="hint">Loading…</p>`;
+  let stats = [];
+  try {
+    const data = await api("/api/admin/ai-health");
+    stats = data.stats || [];
+  } catch (e) {
+    panel.innerHTML = `<h1>🩺 AI Provider Health (24h)</h1><p class="hint">Could not load: ${escapeHtml(e.message)}</p>`;
+    return;
+  }
+  if (!stats.length) {
+    panel.innerHTML = `<h1>🩺 AI Provider Health (24h)</h1><p class="hint">No AI calls logged in the last 24 hours yet.</p>`;
+    return;
+  }
+  const byProvider = new Map();
+  for (const row of stats) {
+    if (!byProvider.has(row.provider)) byProvider.set(row.provider, { ok: 0, fail: 0 });
+    if (row.ok) byProvider.get(row.provider).ok += row.n;
+    else byProvider.get(row.provider).fail += row.n;
+  }
+  panel.innerHTML = `
+    <h1>🩺 AI Provider Health (24h)</h1>
+    <p class="hint">Shows which provider in the fallback chain (OpenRouter → Groq → Gemini → Workers AI) is actually answering requests.</p>
+    <div class="ai-health-grid">
+      ${Array.from(byProvider.entries()).map(([provider, { ok, fail }]) => {
+        const total = ok + fail;
+        const pct = total ? Math.round((ok / total) * 100) : 0;
+        return `
+          <div class="ai-health-row">
+            <b>${escapeHtml(provider)}</b>
+            <span>${ok} ok / ${fail} failed (${pct}% success)</span>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+// ---------- class performance overview (heatmap) ----------
+
+function scoreColor(pct) {
+  // 0% -> red, 50% -> gold, 100% -> green
+  if (pct === null || pct === undefined) return "transparent";
+  const hue = Math.max(0, Math.min(120, (pct / 100) * 120));
+  return `hsl(${hue}, 65%, 82%)`;
+}
+
+async function renderOverviewPanel(panel) {
+  panel.innerHTML = `
+    <h1>📊 Class Performance Overview</h1>
+    <p class="hint">A quick heatmap of how each pupil is doing across the cases they've played. Darker green is closer to full marks; red means there's ground to cover.</p>
+    <div id="classPicker"></div>
+    <div id="heatmapArea"></div>
+    <div id="misconceptionsArea"></div>
+  `;
+  const picker = $("#classPicker", panel);
+  const heatArea = $("#heatmapArea", panel);
+  const misArea = $("#misconceptionsArea", panel);
+  let classes = [];
+  try {
+    const data = await api("/api/admin/classes");
+    classes = data.classes || [];
+  } catch (e) {
+    picker.innerHTML = `<p class="hint">Could not load classes: ${escapeHtml(e.message)}</p>`;
+    return;
+  }
+  if (!classes.length) {
+    picker.innerHTML = `<p class="hint">${me.role === "teacher" ? "No classes are assigned to your account yet — ask an admin to assign you one." : "No pupils have played a case yet — once they do, their classes will appear here."}</p>`;
+    return;
+  }
+  picker.innerHTML = `
+    <label>Class</label>
+    <select id="classSelect">${classes.map((c) => `<option value="${escapeHtmlAttr(c)}">${escapeHtml(c)}</option>`).join("")}</select>
+  `;
+  const select = $("#classSelect", picker);
+  const loadAll = async () => {
+    heatArea.innerHTML = `<p class="hint">Loading…</p>`;
+    misArea.innerHTML = "";
+    try {
+      const data = await api("/api/admin/overview?class=" + encodeURIComponent(select.value));
+      renderHeatmap(heatArea, data);
+    } catch (e) {
+      heatArea.innerHTML = `<p class="hint">Could not load overview: ${escapeHtml(e.message)}</p>`;
+    }
+    try {
+      const misData = await api("/api/admin/misconceptions?class=" + encodeURIComponent(select.value));
+      renderMisconceptions(misArea, misData);
+    } catch (e) {
+      misArea.innerHTML = "";
+    }
+  };
+  select.addEventListener("change", loadAll);
+  loadAll();
+}
+
+function renderMisconceptions(container, data) {
+  const items = data.misconceptions || [];
+  if (!items.length) { container.innerHTML = ""; return; }
+  container.innerHTML = `
+    <h3 style="margin-top:22px;">🔍 Common mix-ups in ${escapeHtml(data.class)}</h3>
+    <p class="hint">Wrong options a large share of the class picked for the same component — worth a quick recap.</p>
+    <div class="misconception-list">
+      ${items.slice(0, 8).map((m) => `
+        <div class="misconception-row">
+          <div><b>${escapeHtml(m.caseTitle)}</b> — ${escapeHtml(m.component)}</div>
+          <div class="hint">${m.pickRate}% (${m.pickCount}/${m.totalPicks}) picked: "${escapeHtml(m.wrongOptionText)}"</div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderHeatmap(container, data) {
+  const { cases, pupils } = data;
+  if (!pupils || !pupils.length) {
+    container.innerHTML = `<p class="hint">No submissions yet for class ${escapeHtml(data.class)}.</p>`;
+    return;
+  }
+  container.innerHTML = `
+    <div style="overflow-x:auto;">
+      <table class="heat">
+        <thead>
+          <tr>
+            <th style="text-align:left;">Pupil</th>
+            ${cases.map((c) => `<th>${escapeHtml(c)}</th>`).join("")}
+            <th>Average</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${pupils.map((p) => `
+            <tr>
+              <td class="name">${escapeHtml(p.name)}</td>
+              ${cases.map((c) => {
+                const cell = p.scores[c];
+                if (!cell) return `<td><span class="cell-empty">—</span></td>`;
+                const pct = Math.round((cell.score / cell.max) * 100);
+                return `<td style="background:${scoreColor(pct)};">${cell.score}/${cell.max}</td>`;
+              }).join("")}
+              <td class="avg" style="background:${scoreColor(p.average)};">${p.average === null ? "—" : p.average + "%"}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ---------- rubric editor ----------
+
+const RUBRIC_LABELS = {
+  taskIdentification: "Task Identification (Purpose/Audience/Context)",
+  stimulusKeyInfo: "Evidence Board (key info selection)",
+  ownContent: "Your Hunch (own content idea)",
+  letterChoices: "Letter Choices (MCQ components)",
+  paragraphing: "Paragraphing",
+  overallQuality: "Overall Quality (AI holistic read)",
+};
+
+async function renderRubricPanel(panel) {
+  panel.innerHTML = `<h1>🧮 AI Marking Rubric</h1><p class="hint">Loading…</p>`;
+  let rubric;
+  try {
+    rubric = await api("/api/admin/rubric");
+  } catch (e) {
+    panel.innerHTML = `<h1>🧮 AI Marking Rubric</h1><p class="hint">Could not load rubric: ${escapeHtml(e.message)}</p>`;
+    return;
+  }
+  panel.innerHTML = `
+    <h1>🧮 AI Marking Rubric</h1>
+    <p class="hint">Set how many points each part of a submission is worth. The total marks pupils are graded out of is simply the sum of these — change any value and the total updates automatically.</p>
+    <div class="rubric-grid" id="rubricGrid">
+      ${Object.keys(RUBRIC_LABELS).map((key) => `
+        <label>${RUBRIC_LABELS[key]}</label>
+        <input type="number" min="0" step="1" data-key="${key}" value="${rubric.weights[key]}"/>
+      `).join("")}
+    </div>
+    <div class="rubric-total" id="rubricTotal">Total marks: ${rubric.total}</div>
+    <label>Mastery threshold (score at/above this skips the "stronger version" coaching rewrite)</label>
+    <input type="number" min="0" id="masteryThreshold" value="${rubric.masteryThreshold}"/>
+    <button class="btn primary" id="saveRubric">Save rubric</button>
+    <div id="rubricMsg"></div>
+  `;
+  const grid = $("#rubricGrid", panel);
+  const totalEl = $("#rubricTotal", panel);
+  const recalcTotal = () => {
+    const total = $$("input[data-key]", grid).reduce((s, inp) => s + (Number(inp.value) || 0), 0);
+    totalEl.textContent = "Total marks: " + total;
+  };
+  $$("input[data-key]", grid).forEach((inp) => inp.addEventListener("input", recalcTotal));
+
+  $("#saveRubric", panel).addEventListener("click", async () => {
+    const weights = {};
+    $$("input[data-key]", grid).forEach((inp) => { weights[inp.dataset.key] = Number(inp.value); });
+    const masteryThreshold = Number($("#masteryThreshold", panel).value);
+    const msgEl = $("#rubricMsg", panel);
+    try {
+      await api("/api/admin/rubric", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ weights, masteryThreshold }),
+      });
+      msgEl.innerHTML = `<div class="msg ok">Rubric saved. New submissions will be marked against it right away.</div>`;
+    } catch (e) {
+      msgEl.innerHTML = `<div class="msg error">${escapeHtml(e.message)}</div>`;
+    }
+  });
+}
+
+// ---------- teacher account management (admin only) ----------
+
+async function renderTeachersPanel(panel) {
+  panel.innerHTML = `<h1>🧑‍🏫 Teacher Accounts</h1><p class="hint">Loading…</p>`;
+  let teachers = [];
+  try {
+    const data = await api("/api/admin/teachers");
+    teachers = data.teachers || [];
+  } catch (e) {
+    panel.innerHTML = `<h1>🧑‍🏫 Teacher Accounts</h1><p class="hint">Could not load teachers: ${escapeHtml(e.message)}</p>`;
+    return;
+  }
+  panel.innerHTML = `
+    <h1>🧑‍🏫 Teacher Accounts</h1>
+    <p class="hint">Teachers can manage cases and the rubric, but the Class Performance Overview only shows classes assigned to them below.</p>
+    <div id="teacherList"></div>
+    <hr style="margin:20px 0;border:none;border-top:1.5px dashed var(--paper-shadow);"/>
+    <h3>➕ Add a teacher account</h3>
+    <label>Username</label>
+    <input type="text" id="newTUsername"/>
+    <label>Password (min 6 characters)</label>
+    <input type="password" id="newTPassword"/>
+    <label>Assigned classes (comma-separated, e.g. 5IG, 5HN)</label>
+    <input type="text" id="newTClasses" placeholder="5IG, 5HN"/>
+    <button class="btn primary" id="addTeacher">Add teacher</button>
+    <div id="teacherMsg"></div>
+  `;
+  renderTeacherList($("#teacherList", panel), teachers);
+
+  $("#addTeacher", panel).addEventListener("click", async () => {
+    const username = $("#newTUsername", panel).value.trim();
+    const password = $("#newTPassword", panel).value;
+    const classes = $("#newTClasses", panel).value.split(",").map((s) => s.trim()).filter(Boolean);
+    const msgEl = $("#teacherMsg", panel);
+    try {
+      await api("/api/admin/teachers", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ username, password, classes }),
+      });
+      msgEl.innerHTML = `<div class="msg ok">Teacher account created.</div>`;
+      renderTeachersPanel(panel);
+    } catch (e) {
+      msgEl.innerHTML = `<div class="msg error">${escapeHtml(e.message)}</div>`;
+    }
+  });
+}
+
+function renderTeacherList(container, teachers) {
+  if (!teachers.length) { container.innerHTML = `<p class="hint">No teacher accounts yet.</p>`; return; }
+  container.innerHTML = teachers.map((t) => `
+    <div class="teacher-row" data-id="${t.id}">
+      <div class="row" style="justify-content:space-between;">
+        <b>${escapeHtml(t.username)}</b>
+        <button class="btn small" data-action="delete">Remove</button>
+      </div>
+      <input type="text" class="classes-input" value="${escapeHtmlAttr(t.classes.join(", "))}" placeholder="5IG, 5HN"/>
+      <div class="row" style="margin-top:6px;">
+        <button class="btn small" data-action="saveClasses">Save classes</button>
+        <input type="password" placeholder="New password (optional)" data-action="newPassword" style="flex:1;"/>
+        <button class="btn small" data-action="setPassword">Set password</button>
+      </div>
+      <div class="msg-inline"></div>
+    </div>
+  `).join("");
+
+  $$(".teacher-row", container).forEach((row) => {
+    const id = row.dataset.id;
+    const classesInput = $(".classes-input", row);
+    row.querySelector('[data-action="delete"]').addEventListener("click", async () => {
+      if (!confirm("Remove this teacher account? This cannot be undone.")) return;
+      try {
+        await api("/api/admin/teachers/" + id, { method: "DELETE" });
+        row.remove();
+      } catch (e) { alert(e.message); }
+    });
+    row.querySelector('[data-action="saveClasses"]').addEventListener("click", async () => {
+      const classes = classesInput.value.split(",").map((s) => s.trim()).filter(Boolean);
+      try {
+        await api("/api/admin/teachers/" + id, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ classes }),
+        });
+        row.querySelector(".msg-inline").innerHTML = `<span class="hint">Saved.</span>`;
+      } catch (e) { alert(e.message); }
+    });
+    row.querySelector('[data-action="setPassword"]').addEventListener("click", async () => {
+      const pwInput = row.querySelector('[data-action="newPassword"]');
+      const password = pwInput.value;
+      if (!password) return;
+      try {
+        await api("/api/admin/teachers/" + id, {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ password }),
+        });
+        pwInput.value = "";
+        row.querySelector(".msg-inline").innerHTML = `<span class="hint">Password updated.</span>`;
+      } catch (e) { alert(e.message); }
+    });
+  });
+}
+
+// ---------- case management ----------
+
+function regenerablePartsForCase(c) {
+  const parts = [
+    { key: "taskChunks", label: "Task clue tags" },
+    { key: "stimulus", label: "Evidence distractors" },
+    { key: "ownContentKeywords", label: "Own-content keywords" },
+  ];
+  for (const comp of c.components || []) {
+    if (comp.key === "purpose" || comp.key === "filler" || /^keyinfo\d+$/.test(comp.key)) {
+      parts.push({ key: comp.key, label: comp.label });
+    }
+  }
+  return parts;
+}
+
+function renderCaseList(cases) {
+  const el = $("#caseList");
+  if (!cases.length) { el.innerHTML = `<p class="hint">No teacher-uploaded cases yet — the two built-in tutorial cases are always available to pupils.</p>`; return; }
+  el.innerHTML = cases.map((c) => `
+    <div class="case-row" style="flex-direction:column;align-items:stretch;">
+      <div class="row" style="justify-content:space-between;">
+        <div>
+          <b>${escapeHtml(c.title)}</b> <span class="hint">(${c.formal ? "Formal" : "Informal"})</span>
+          <span class="draft-badge" style="${c.status === "published" ? "background:var(--green);" : ""}">${c.status === "published" ? "Published" : "Draft"}</span>
+        </div>
+        <div class="row">
+          ${c.status !== "published" ? `<button class="btn small primary" data-action="publish" data-id="${c.id}">Publish</button>` : ""}
+          <button class="btn small" data-action="regen-toggle" data-id="${c.id}">🔄 Regenerate a part</button>
+          <button class="btn small" data-action="delete" data-id="${c.id}">Delete</button>
+        </div>
+      </div>
+      <p class="hint" style="margin:4px 0 0;">
+        Built by ${escapeHtml(c.created_by || "unknown")}${c.approved_by ? ` · Published by ${escapeHtml(c.approved_by)}` : ""}
+      </p>
+      <div class="regen-panel" data-panel-for="${c.id}" style="display:none;"></div>
+    </div>
+  `).join("");
+
+  $$('button[data-action="delete"]', el).forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Delete this case? This cannot be undone.")) return;
+      try {
+        await api("/api/admin/cases/" + btn.dataset.id, { method: "DELETE" });
+        renderDashboard({ text: "Case deleted." });
+      } catch (e) { alert(e.message); }
+    });
+  });
+
+  $$('button[data-action="publish"]', el).forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      try {
+        await api("/api/admin/cases/" + btn.dataset.id + "/publish", { method: "PUT" });
+        renderDashboard({ text: "Case published — pupils can now play it." });
+      } catch (e) { alert(e.message); }
+    });
+  });
+
+  $$('button[data-action="regen-toggle"]', el).forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const caseId = btn.dataset.id;
+      const c = cases.find((x) => x.id === caseId);
+      const panel = $(`[data-panel-for="${caseId}"]`, el);
+      const isOpen = panel.style.display !== "none";
+      panel.style.display = isOpen ? "none" : "flex";
+      if (!isOpen) renderRegenPanel(panel, c);
+    });
+  });
+}
+
+function renderRegenPanel(panel, c) {
+  const parts = regenerablePartsForCase(c);
+  panel.innerHTML = parts.map((p) => `
+    <button class="btn small" data-regen-key="${p.key}">🔄 ${escapeHtml(p.label)}</button>
+  `).join("") + `<span class="regen-status hint"></span>`;
+  $$("[data-regen-key]", panel).forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const statusEl = $(".regen-status", panel);
+      btn.disabled = true;
+      statusEl.textContent = "Regenerating…";
+      try {
+        await api(`/api/admin/cases/${c.id}/regenerate`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ part: btn.dataset.regenKey }),
+        });
+        statusEl.textContent = "Done — refreshing case list.";
+        const data = await api("/api/admin/cases");
+        renderCaseList(data.cases || []);
+      } catch (e) {
+        statusEl.textContent = "Failed: " + e.message;
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
+function renderForm(form) {
+  form.innerHTML = `
+    <label>Case title</label>
+    <input type="text" id="f_title" placeholder="e.g. The Class Trip Puzzle"/>
+
+    <label>Stimulus picture</label>
+    <input type="file" accept="image/*" id="f_image"/>
+    <img id="f_imgprev" class="imgprev" style="display:none;"/>
+
+    <label>Question prompt (the task pupils read)</label>
+    <textarea id="f_task" placeholder="e.g. You saw this notice about... Write a letter/email to ... to ..."></textarea>
+
+    <label>Key information pupils must include (one per line)</label>
+    <div id="keyInfoList"></div>
+    <button type="button" class="btn small" id="addKeyInfo">+ Add key info point</button>
+
+    <label>Register</label>
+    <div class="radio-row">
+      <label><input type="radio" name="formal" value="1" checked/> Formal (e.g. to a teacher, editor, stranger)</label>
+      <label><input type="radio" name="formal" value="0"/> Informal (e.g. to a friend)</label>
+    </div>
+
+    <label>"Own content" question (the idea pupils must invent themselves)</label>
+    <input type="text" id="f_ownprompt" placeholder="e.g. Suggest one way you could still help..."/>
+    <label>Acceptable own-content ideas (optional, one per line — helps marking)</label>
+    <textarea id="f_ownideas" placeholder="e.g. donate items&#10;design a poster&#10;help sort recyclables beforehand"></textarea>
+
+    <label>Model / reference letter (full text)</label>
+    <textarea class="tall" id="f_model" placeholder="Write the full model answer here — this is what pupils' letters are marked against."></textarea>
+
+    <button type="button" class="btn primary" id="submitCase">🤖 Build case with AI</button>
+    <div id="formMsg"></div>
+    <div id="preview"></div>
+  `;
+  let imageData = null;
+  $("#f_image", form).addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      imageData = reader.result;
+      const img = $("#f_imgprev", form);
+      img.src = imageData; img.style.display = "block";
+    };
+    reader.readAsDataURL(file);
+  });
+
+  const keyInfoList = $("#keyInfoList", form);
+  function addKeyInfoRow(val="") {
+    const row = document.createElement("div");
+    row.className = "list-item";
+    row.innerHTML = `<input type="text" value="${escapeHtmlAttr(val)}" placeholder="e.g. Date: Saturday, 14 March"/><button type="button">✕</button>`;
+    row.querySelector("button").addEventListener("click", () => row.remove());
+    keyInfoList.appendChild(row);
+  }
+  addKeyInfoRow(); addKeyInfoRow(); addKeyInfoRow();
+  $("#addKeyInfo", form).addEventListener("click", () => addKeyInfoRow());
+
+  $("#submitCase", form).addEventListener("click", async () => {
+    const title = $("#f_title", form).value.trim();
+    const taskText = $("#f_task", form).value.trim();
+    const modelLetter = $("#f_model", form).value.trim();
+    const keyInfo = $$("#keyInfoList input", form).map((i) => i.value.trim()).filter(Boolean);
+    const formal = $("input[name=formal]:checked", form).value === "1";
+    const ownContentPrompt = $("#f_ownprompt", form).value.trim();
+    const ownContentIdeas = $("#f_ownideas", form).value.split("\n").map((s) => s.trim()).filter(Boolean);
+
+    const msgEl = $("#formMsg", form);
+    if (!title || !taskText || !modelLetter || keyInfo.length === 0) {
+      msgEl.innerHTML = `<div class="msg error">Please fill in title, question prompt, at least one key info point, and the model letter.</div>`;
+      return;
+    }
+    const btn = $("#submitCase", form);
+    btn.disabled = true; btn.textContent = "Building… (AI is thinking)";
+    msgEl.innerHTML = "";
+    try {
+      const res = await api("/api/admin/cases", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title, taskText, keyInfo, formal, ownContentPrompt, ownContentIdeas, modelLetter, imageData }),
+      });
+      const aiSummary = res.aiUsed
+        ? "fully AI-assisted"
+        : res.anyAiUsed
+        ? "partially AI-assisted (some parts used a template — see the preview below for which)"
+        : "built from templates (no AI provider was reachable)";
+      msgEl.innerHTML = `
+        <div class="msg ok">Case "${escapeHtml(title)}" created as a <b>draft</b> — ${aiSummary}. Review the preview below, then publish it when you're happy (pupils can't see it until then).</div>
+      `;
+      $("#preview", form).innerHTML = `
+        <button type="button" class="btn primary" id="publishNewCase">✅ Publish this case</button>
+        <h3 style="margin-top:16px;">What used AI vs. a template</h3>
+        <pre>${escapeHtml(JSON.stringify(res.aiDetail, null, 2))}</pre>
+        <h3>Preview of generated structure</h3>
+        <pre>${escapeHtml(JSON.stringify(res.built, null, 2))}</pre>
+      `;
+      $("#publishNewCase", form).addEventListener("click", async () => {
+        try {
+          await api("/api/admin/cases/" + res.id + "/publish", { method: "PUT" });
+          renderDashboard({ text: "Case published — pupils can now play it." });
+        } catch (e) { alert(e.message); }
+      });
+      const data = await api("/api/admin/cases");
+      renderCaseList(data.cases || []);
+    } catch (e) {
+      msgEl.innerHTML = `<div class="msg error">${escapeHtml(e.message)}</div>`;
+    } finally {
+      btn.disabled = false; btn.textContent = "🤖 Build case with AI";
+    }
+  });
+}
+
+if (token && me) { renderDashboard(); } else { renderLogin(); }
+</script>
+</body>
+</html>
