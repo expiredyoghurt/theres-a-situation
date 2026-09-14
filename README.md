@@ -1,4 +1,4 @@
-# Boss! There's a situation! (v1.7)
+# Boss! There's a situation! (v1.8)
 
 A detective-themed game that gamifies the PSLE English **Situational Writing**
 task (Purpose / Audience / Context, key information, and formal vs. informal
@@ -459,7 +459,7 @@ before deploying any change to the scoring functions.
   it's easy to read, host, and modify.
 
 
-## v1.7 change log
+## v1.8 change log
 
 - Step 4 “Draft Your Report” now has **13 parts**: Salutation (Audience), Greeting/Introduction, Purpose, Context, Key information 1–5, Own idea, Closing sentence, Sign-off, and Name.
 - Every Step 4 part presents **3 options plus a blank “write your own” field**.
@@ -468,4 +468,10 @@ before deploying any change to the scoring functions.
 - Teacher/admin users can **AI-regenerate any of the 13 parts individually**, as well as the existing task/evidence/own-content supporting pieces.
 - AI case generation now targets **five key-information points** and creates the expanded 13-part Step 4 structure.
 - Built-in tutorial cases are served through the same 13-part Step 4 interface.
-- Version bumped to **v1.7**.
+- Version bumped to **v1.8**.
+
+## External D1 case-authoring workflow (V1.8)
+
+For cases that you prefer to author outside the app, use `AI_CASE_TO_D1_SQL_PROMPT.md` with an external AI tool to produce a complete executable SQL file. Run the resulting SQL in Cloudflare D1 Console. Set `image_data` to `NULL`; then use the Teacher front-end's **Add picture / Replace picture** control on that case to attach the stimulus image. Attaching or replacing an image returns the case to **Draft**, so it should be reviewed and published again.
+
+The included `CASE_IMPORT_EXAMPLE.sql` shows the expected D1 shape.
