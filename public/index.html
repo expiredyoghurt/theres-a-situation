@@ -87,6 +87,16 @@
     border:1.5px solid var(--paper-shadow);background:var(--card);min-width:240px;
   }
   .case-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;}
+  .due-panel{background:#fbeecb;border:1.5px dashed #c99a2e;border-radius:8px;padding:14px 16px;margin-bottom:20px;}
+  .due-title{font-family:'Special Elite',monospace;font-size:15px;color:#7a4e12;}
+  .due-list{display:flex;flex-direction:column;gap:6px;}
+  .due-item{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+    background:var(--card);border:1.5px solid var(--paper-shadow);border-radius:6px;
+    padding:8px 12px;cursor:pointer;font-size:13.5px;
+  }
+  .due-item:hover{background:#fff;}
+  .due-score{color:#9a3b2e;font-size:12px;font-weight:600;white-space:nowrap;}
   .case-card{
     background:var(--card);border:1.5px solid var(--paper-shadow);border-radius:8px;
     overflow:hidden;cursor:pointer;transition:transform .12s ease, box-shadow .12s ease;
@@ -175,6 +185,11 @@
   .option.picked{background:var(--green-light);border-color:var(--green);font-weight:600;}
   .para-toggle{display:flex;align-items:center;gap:7px;margin-top:8px;font-size:12.5px;color:#5b4321;}
   .para-toggle input{accent-color:var(--red);}
+  .signoff-name-field input{
+    width:100%;font-family:'Lexend';font-size:14px;padding:9px 12px;border-radius:6px;
+    border:1.5px solid var(--paper-shadow);background:#fff;
+  }
+  .field-note{font-size:12px;color:#7a6a45;margin:6px 0 0;}
 
   .letter-preview{
     background:#fffdf5;border:2px solid var(--navy);border-radius:8px;padding:18px 20px;
@@ -248,30 +263,43 @@
 <div class="topbar">
   <div class="brand"><span class="badge">🚨</span> Boss! There's a situation!</div>
   <div class="topbar-actions">
+    <button id="btnMyScores">📈 My Scores</button>
     <button id="btnLeaderboard">🏆 Leaderboard</button>
   </div>
 </div>
 
 <div class="wrap" id="app"></div>
 
-<div class="footer-link"><a href="/admin.html">Teacher / Admin tools →</a></div>
+<div class="footer-link"><a href="/admin.html">Teacher / Admin tools →</a> <span style="color:#5b6a78;">· v1.5</span></div>
 
 <script>
 const $ = (sel, el=document) => el.querySelector(sel);
 const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
 const app = $("#app");
 
+function getOrCreateDeviceId() {
+  let id = localStorage.getItem("detectiveDeviceId");
+  if (!id) {
+    id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+    localStorage.setItem("detectiveDeviceId", id);
+  }
+  return id;
+}
+
 let state = {
   screen: "launch",
   cases: [],
+  dueCases: [],
   currentCase: null,
   step: 0,
   playerName: localStorage.getItem("detectiveName") || "",
   playerClass: localStorage.getItem("detectiveClass") || "",
+  deviceId: getOrCreateDeviceId(),
   taskAnswers: {},
   stimulusSelected: new Set(),
   ownContent: "",
   componentChoices: {},
+  signOffName: "",
   paragraphBreaks: new Set(),
   result: null,
 };
@@ -294,6 +322,7 @@ function resetCaseState() {
   state.ownContent = "";
   state.componentChoices = {};
   state.paragraphBreaks = new Set();
+  state.signOffName = "";
   state.result = null;
 }
 
@@ -305,6 +334,11 @@ async function loadHome() {
     const data = await api("/api/cases");
     state.cases = data.cases || [];
   } catch (e) { state.cases = []; }
+  try {
+    const qs = "?name=" + encodeURIComponent(state.playerName) + "&playerClass=" + encodeURIComponent(state.playerClass || "") + "&deviceId=" + encodeURIComponent(state.deviceId || "");
+    const dueData = await api("/api/practice-due" + qs);
+    state.dueCases = dueData.due || [];
+  } catch (e) { state.dueCases = []; }
   render();
 }
 
@@ -354,6 +388,7 @@ function renderLaunch() {
 }
 
 function renderHome() {
+  const due = state.dueCases || [];
   app.innerHTML = `
     <div class="panel">
       <div class="stamp">INBOX</div>
@@ -363,6 +398,20 @@ function renderHome() {
         Detective <b>${escapeHtml(state.playerName)}</b>${state.playerClass ? ` <span class="hint">(Class ${escapeHtml(state.playerClass)})</span>` : ""}
         &nbsp;·&nbsp;<a href="#" id="switchDetective" style="color:#8a6a2e;">Not you? Switch detective</a>
       </div>
+      ${due.length ? `
+        <div class="due-panel">
+          <div class="due-title">📌 Cases due for another look</div>
+          <p class="hint" style="margin:2px 0 10px;">You haven't quite cracked these yet — worth a retry.</p>
+          <div class="due-list">
+            ${due.map((d) => `
+              <div class="due-item" data-id="${d.caseId}">
+                <span>${escapeHtml(d.caseTitle)}</span>
+                <span class="due-score">Last try: ${d.lastScore}/${d.max}</span>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      ` : ""}
       <div class="case-grid" id="caseGrid">
         ${state.cases.length ? state.cases.map(caseCardHtml).join("") : `<p style="color:#5b4321">Loading case files…</p>`}
       </div>
@@ -372,6 +421,9 @@ function renderHome() {
     e.preventDefault();
     state.screen = "launch";
     render();
+  });
+  $$(".due-item").forEach((el) => {
+    el.addEventListener("click", () => openCase(el.dataset.id));
   });
   $$(".case-card").forEach((el) => {
     el.addEventListener("click", () => openCase(el.dataset.id));
@@ -390,6 +442,50 @@ function caseCardHtml(c) {
   `;
 }
 
+function draftStorageKey(caseId) {
+  return "draftProgress:" + caseId;
+}
+
+/** Saves everything needed to resume this attempt after a refresh or a
+ * dropped connection — school wifi is not always reliable, and losing a
+ * half-built letter is a bad experience. Cleared on successful submit. */
+function persistProgress() {
+  if (!state.currentCase) return;
+  try {
+    localStorage.setItem(draftStorageKey(state.currentCase.id), JSON.stringify({
+      step: state.step,
+      taskAnswers: state.taskAnswers,
+      stimulusSelected: Array.from(state.stimulusSelected),
+      ownContent: state.ownContent,
+      componentChoices: state.componentChoices,
+      paragraphBreaks: Array.from(state.paragraphBreaks),
+      signOffName: state.signOffName,
+    }));
+  } catch (e) { /* localStorage full/unavailable — losing draft resilience isn't fatal */ }
+}
+
+function restoreProgress(caseId) {
+  try {
+    const raw = localStorage.getItem(draftStorageKey(caseId));
+    if (!raw) return false;
+    const saved = JSON.parse(raw);
+    state.step = saved.step || 0;
+    state.taskAnswers = saved.taskAnswers || {};
+    state.stimulusSelected = new Set(saved.stimulusSelected || []);
+    state.ownContent = saved.ownContent || "";
+    state.componentChoices = saved.componentChoices || {};
+    state.paragraphBreaks = new Set(saved.paragraphBreaks || []);
+    state.signOffName = saved.signOffName || "";
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function clearProgress(caseId) {
+  try { localStorage.removeItem(draftStorageKey(caseId)); } catch (e) { /* ignore */ }
+}
+
 async function openCase(id) {
   resetCaseState();
   state.screen = "case";
@@ -397,12 +493,33 @@ async function openCase(id) {
   render();
   try {
     const data = await api("/api/cases/" + id);
+    // Shuffle each MCQ component's option DISPLAY order once per case
+    // load. The correct answer is still tracked server-side by option
+    // id, not position, so this doesn't change scoring — it just stops
+    // "the answer is always C" from becoming a shortcut once it spreads
+    // around a class, since the order is different every time someone
+    // opens the case.
+    if (data.case && Array.isArray(data.case.components)) {
+      data.case.components = data.case.components.map((comp) => ({
+        ...comp,
+        options: shuffleArray(comp.options.slice()),
+      }));
+    }
     state.currentCase = data.case;
+    restoreProgress(id); // no-op if there's nothing saved for this case
   } catch (e) {
     alert("Could not open that case: " + e.message);
     state.screen = "home";
   }
   render();
+}
+
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
 function renderCase() {
@@ -477,6 +594,7 @@ function renderBriefing(body, c) {
     btn.addEventListener("click", () => {
       if (!selectedChunk) return;
       state.taskAnswers[selectedChunk] = btn.dataset.t;
+      persistProgress();
       renderBriefing(body, c);
     });
   });
@@ -486,7 +604,7 @@ function renderBriefing(body, c) {
     backLabel: "← Case Files", nextLabel: "Next: Evidence →",
     nextDisabled: tagged < 3,
     onBack: () => { state.screen = "home"; render(); },
-    onNext: () => { state.step = 1; render(); },
+    onNext: () => { state.step = 1; persistProgress(); render(); },
   });
 }
 
@@ -507,14 +625,15 @@ function renderEvidence(body, c) {
       const id = el.dataset.id;
       if (state.stimulusSelected.has(id)) state.stimulusSelected.delete(id);
       else state.stimulusSelected.add(id);
+      persistProgress();
       renderEvidence(body, c);
     });
   });
   navRow(body, {
     nextLabel: "Next: Hunch →",
     nextDisabled: state.stimulusSelected.size === 0,
-    onBack: () => { state.step = 0; render(); },
-    onNext: () => { state.step = 2; render(); },
+    onBack: () => { state.step = 0; persistProgress(); render(); },
+    onNext: () => { state.step = 2; persistProgress(); render(); },
   });
 }
 
@@ -526,12 +645,12 @@ function renderHunch(body, c) {
     <div class="prompt-box">${escapeHtml(c.ownContentPrompt || "Suggest a plausible idea of your own for this scenario.")}</div>
     <textarea id="ownContentInput" placeholder="Type your idea here…">${escapeHtml(state.ownContent)}</textarea>
   `;
-  $("#ownContentInput", body).addEventListener("input", (e) => state.ownContent = e.target.value);
+  $("#ownContentInput", body).addEventListener("input", (e) => { state.ownContent = e.target.value; persistProgress(); });
   navRow(body, {
     nextLabel: "Next: Draft →",
     nextDisabled: false,
-    onBack: () => { state.step = 1; render(); },
-    onNext: () => { state.ownContent = $("#ownContentInput", body).value; state.step = 3; render(); },
+    onBack: () => { state.step = 1; persistProgress(); render(); },
+    onNext: () => { state.ownContent = $("#ownContentInput", body).value; state.step = 3; persistProgress(); render(); },
   });
 }
 
@@ -541,6 +660,13 @@ function renderDraft(body, c) {
     <h2 class="step-title">✍️ Step 4 — Draft Your Report</h2>
     <p class="step-instr">Pick the best option for each part of your letter. Tick "start a new paragraph" where a fresh paragraph should begin.</p>
     <div id="components"></div>
+    <div class="component signoff-name-field">
+      <div class="label">${c.formal ? "Sign off with your first AND last name" : "Sign off with your first name"}</div>
+      <input type="text" id="signOffNameInput" maxlength="60"
+        placeholder="${c.formal ? "e.g. Wei Ming Tan" : "e.g. Wei Ming"}"
+        value="${escapeHtml(state.signOffName)}"/>
+      <p class="field-note">${c.formal ? "Formal letters are signed off with a full name." : "First name is fine for an informal note."}</p>
+    </div>
     <h3 style="color:var(--navy);font-size:15px;margin:18px 0 6px;">📄 Live preview</h3>
     <div class="letter-preview" id="preview"></div>
   `;
@@ -565,6 +691,7 @@ function renderDraft(body, c) {
     $$(".option", compEl).forEach((btn) => {
       btn.addEventListener("click", () => {
         state.componentChoices[key] = btn.dataset.oid;
+        persistProgress();
         renderDraft(body, c);
       });
     });
@@ -572,16 +699,36 @@ function renderDraft(body, c) {
     if (cb) cb.addEventListener("change", (e) => {
       if (e.target.checked) state.paragraphBreaks.add(key);
       else state.paragraphBreaks.delete(key);
+      persistProgress();
       updatePreview(c);
     });
   });
-  updatePreview(c);
 
+  const nameInput = $("#signOffNameInput", body);
+  nameInput.addEventListener("input", (e) => {
+    state.signOffName = e.target.value;
+    persistProgress();
+    updatePreview(c);
+    updateDraftNav(body, c);
+  });
+
+  updatePreview(c);
+  updateDraftNav(body, c);
+}
+
+function isSignOffNameValid(name, formal) {
+  const trimmed = (name || "").trim();
+  if (!trimmed) return false;
+  return formal ? trimmed.split(/\s+/).filter(Boolean).length >= 2 : true;
+}
+
+function updateDraftNav(body, c) {
   const allChosen = c.components.every((comp) => state.componentChoices[comp.key]);
+  const nameOk = isSignOffNameValid(state.signOffName, c.formal);
   navRow(body, {
     nextLabel: "Submit Report →",
-    nextDisabled: !allChosen,
-    onBack: () => { state.step = 2; render(); },
+    nextDisabled: !allChosen || !nameOk,
+    onBack: () => { state.step = 2; persistProgress(); render(); },
     onNext: async () => { await doSubmit(body, c); },
   });
 }
@@ -596,6 +743,8 @@ function assembleLetterClient(c) {
     else if (out.length) out += " ";
     out += opt.text;
   }
+  const name = (state.signOffName || "").trim();
+  if (name) out += (out.length ? "\n" : "") + name;
   return out;
 }
 function updatePreview(c) {
@@ -615,15 +764,18 @@ async function doSubmit(body, c) {
       body: JSON.stringify({
         name,
         playerClass: state.playerClass || "",
+        deviceId: state.deviceId || "",
         taskAnswers: state.taskAnswers,
         stimulusSelected: Array.from(state.stimulusSelected),
         ownContent: state.ownContent,
         componentChoices: state.componentChoices,
         paragraphBreaks: Array.from(state.paragraphBreaks),
+        signOffName: (state.signOffName || "").trim(),
       }),
     });
     state.result = res;
     state.step = 4;
+    clearProgress(c.id);
     render();
   } catch (e) {
     body.innerHTML = `<p class="step-instr">Something went wrong filing your report: ${escapeHtml(e.message)}. <button class="btn secondary" id="retry">Try again</button></p>`;
@@ -706,11 +858,45 @@ async function openLeaderboard() {
   }
 }
 
+// ---- my scores ----
+async function openMyScores() {
+  const overlay = document.createElement("div");
+  overlay.className = "overlay";
+  overlay.innerHTML = `
+    <div class="board">
+      <button class="board-close" id="closeScores">✕</button>
+      <h2>📈 My Scores</h2>
+      <div id="myScoresList">Loading…</div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  $("#closeScores", overlay).addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+  if (!state.playerName) {
+    $("#myScoresList", overlay).innerHTML = `<p style="color:#f4e8c8">Identify yourself first to see your scores.</p>`;
+    return;
+  }
+  try {
+    const qs = "?name=" + encodeURIComponent(state.playerName) + "&playerClass=" + encodeURIComponent(state.playerClass || "") + "&deviceId=" + encodeURIComponent(state.deviceId || "");
+    const data = await api("/api/my-scores" + qs);
+    const list = data.scores || [];
+    $("#myScoresList", overlay).innerHTML = list.length ? list.map((row) => `
+      <div class="lb-row">
+        <div><span class="lb-case">${escapeHtml(row.case_title)}</span></div>
+        <div class="lb-score">${row.score}/${row.max_score}</div>
+      </div>
+    `).join("") : `<p style="color:#f4e8c8">No cases solved yet — go crack one!</p>`;
+  } catch (e) {
+    $("#myScoresList", overlay).innerHTML = `<p style="color:#f4e8c8">Couldn't load your scores right now.</p>`;
+  }
+}
+
 function escapeHtml(s) {
   return (s ?? "").toString().replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
 }
 
 $("#btnLeaderboard").addEventListener("click", openLeaderboard);
+$("#btnMyScores").addEventListener("click", openMyScores);
 
 if (state.playerName) { loadHome(); } else { render(); }
 </script>

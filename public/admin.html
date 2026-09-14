@@ -51,6 +51,12 @@
   table.heat td.name{text-align:left;font-weight:600;background:var(--card);}
   table.heat td.avg{font-weight:700;}
   .cell-empty{color:#a1895a;font-size:11px;}
+  .misconception-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+  .misconception-row{background:#fbeecb;border:1.5px solid #c99a2e;border-radius:8px;padding:9px 13px;font-size:13.5px;}
+  .ai-health-grid{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+  .ai-health-row{display:flex;justify-content:space-between;background:var(--card);border:1.5px solid var(--paper-shadow);border-radius:6px;padding:8px 12px;font-size:13.5px;}
+  .draft-badge{display:inline-block;background:#c99a2e;color:#fff;font-size:10.5px;padding:2px 8px;border-radius:10px;margin-left:8px;}
+  .regen-panel{margin-top:8px;padding-top:8px;border-top:1px dashed var(--paper-shadow);display:flex;flex-wrap:wrap;gap:6px;}
   .teacher-row{background:var(--card);border:1.5px solid var(--paper-shadow);border-radius:8px;padding:10px 14px;margin-bottom:8px;}
   .teacher-row .classes-input{margin-top:6px;}
   .tag{display:inline-block;background:var(--navy);color:#fff;font-size:10.5px;padding:2px 8px;border-radius:10px;margin-left:8px;}
@@ -119,19 +125,24 @@ async function renderDashboard(msg) {
   app.innerHTML = `
     <div class="topline">
       <div>Signed in as <b>${escapeHtml(me.username)}</b> <span class="tag">${me.role === "admin" ? "Admin" : "Teacher"}</span></div>
-      <button class="btn small" id="logoutBtn">Log out</button>
+      <div class="row">
+        <span class="hint" style="margin:0;">v1.5</span>
+        <button class="btn small" id="logoutBtn">Log out</button>
+      </div>
     </div>
     ${msg ? `<div class="msg ${msg.error ? "error" : "ok"}">${escapeHtml(msg.text)}</div>` : ""}
     <div class="panel" id="overviewPanel"></div>
     <div class="panel" id="rubricPanel"></div>
+    <div class="panel" id="aiHealthPanel"></div>
     ${me.role === "admin" ? `<div class="panel" id="teachersPanel"></div>` : ""}
     <div class="panel">
       <h1>📁 Situation File Manager</h1>
       <h3>Existing practice cases</h3>
+      <p class="hint">Newly built cases start as <b>drafts</b> — pupils never see them until you review the preview and click <b>Publish</b>.</p>
       <div id="caseList">Loading…</div>
       <hr style="margin:26px 0;border:none;border-top:1.5px dashed var(--paper-shadow);"/>
       <h3>➕ Upload a new practice</h3>
-      <p class="hint">Fill in the fields below. AI will build the clickable clues, MCQ letter options and marking key for you — review the JSON preview after creating, and re-create if you'd like to tweak the wording of any field first.</p>
+      <p class="hint">Fill in the fields below. AI will build the clickable clues, MCQ letter options and marking key for you as a draft — review it below, regenerate any single part that doesn't read well, then publish it when you're happy.</p>
       <form id="caseForm"></form>
     </div>
   `;
@@ -139,6 +150,7 @@ async function renderDashboard(msg) {
 
   renderOverviewPanel($("#overviewPanel"));
   renderRubricPanel($("#rubricPanel"));
+  renderAiHealthPanel($("#aiHealthPanel"));
   if (me.role === "admin") renderTeachersPanel($("#teachersPanel"));
 
   renderForm($("#caseForm"));
@@ -146,6 +158,46 @@ async function renderDashboard(msg) {
     const data = await api("/api/admin/cases");
     renderCaseList(data.cases || []);
   } catch (e) { $("#caseList").innerHTML = `<p class="hint">Could not load cases: ${escapeHtml(e.message)}</p>`; }
+}
+
+// ---------- AI provider health ----------
+
+async function renderAiHealthPanel(panel) {
+  panel.innerHTML = `<h1>🩺 AI Provider Health (24h)</h1><p class="hint">Loading…</p>`;
+  let stats = [];
+  try {
+    const data = await api("/api/admin/ai-health");
+    stats = data.stats || [];
+  } catch (e) {
+    panel.innerHTML = `<h1>🩺 AI Provider Health (24h)</h1><p class="hint">Could not load: ${escapeHtml(e.message)}</p>`;
+    return;
+  }
+  if (!stats.length) {
+    panel.innerHTML = `<h1>🩺 AI Provider Health (24h)</h1><p class="hint">No AI calls logged in the last 24 hours yet.</p>`;
+    return;
+  }
+  const byProvider = new Map();
+  for (const row of stats) {
+    if (!byProvider.has(row.provider)) byProvider.set(row.provider, { ok: 0, fail: 0 });
+    if (row.ok) byProvider.get(row.provider).ok += row.n;
+    else byProvider.get(row.provider).fail += row.n;
+  }
+  panel.innerHTML = `
+    <h1>🩺 AI Provider Health (24h)</h1>
+    <p class="hint">Shows which provider in the fallback chain (OpenRouter → Groq → Gemini → Workers AI) is actually answering requests.</p>
+    <div class="ai-health-grid">
+      ${Array.from(byProvider.entries()).map(([provider, { ok, fail }]) => {
+        const total = ok + fail;
+        const pct = total ? Math.round((ok / total) * 100) : 0;
+        return `
+          <div class="ai-health-row">
+            <b>${escapeHtml(provider)}</b>
+            <span>${ok} ok / ${fail} failed (${pct}% success)</span>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
 }
 
 // ---------- class performance overview (heatmap) ----------
@@ -163,9 +215,11 @@ async function renderOverviewPanel(panel) {
     <p class="hint">A quick heatmap of how each pupil is doing across the cases they've played. Darker green is closer to full marks; red means there's ground to cover.</p>
     <div id="classPicker"></div>
     <div id="heatmapArea"></div>
+    <div id="misconceptionsArea"></div>
   `;
   const picker = $("#classPicker", panel);
   const heatArea = $("#heatmapArea", panel);
+  const misArea = $("#misconceptionsArea", panel);
   let classes = [];
   try {
     const data = await api("/api/admin/classes");
@@ -183,17 +237,41 @@ async function renderOverviewPanel(panel) {
     <select id="classSelect">${classes.map((c) => `<option value="${escapeHtmlAttr(c)}">${escapeHtml(c)}</option>`).join("")}</select>
   `;
   const select = $("#classSelect", picker);
-  const loadHeatmap = async () => {
+  const loadAll = async () => {
     heatArea.innerHTML = `<p class="hint">Loading…</p>`;
+    misArea.innerHTML = "";
     try {
       const data = await api("/api/admin/overview?class=" + encodeURIComponent(select.value));
       renderHeatmap(heatArea, data);
     } catch (e) {
       heatArea.innerHTML = `<p class="hint">Could not load overview: ${escapeHtml(e.message)}</p>`;
     }
+    try {
+      const misData = await api("/api/admin/misconceptions?class=" + encodeURIComponent(select.value));
+      renderMisconceptions(misArea, misData);
+    } catch (e) {
+      misArea.innerHTML = "";
+    }
   };
-  select.addEventListener("change", loadHeatmap);
-  loadHeatmap();
+  select.addEventListener("change", loadAll);
+  loadAll();
+}
+
+function renderMisconceptions(container, data) {
+  const items = data.misconceptions || [];
+  if (!items.length) { container.innerHTML = ""; return; }
+  container.innerHTML = `
+    <h3 style="margin-top:22px;">🔍 Common mix-ups in ${escapeHtml(data.class)}</h3>
+    <p class="hint">Wrong options a large share of the class picked for the same component — worth a quick recap.</p>
+    <div class="misconception-list">
+      ${items.slice(0, 8).map((m) => `
+        <div class="misconception-row">
+          <div><b>${escapeHtml(m.caseTitle)}</b> — ${escapeHtml(m.component)}</div>
+          <div class="hint">${m.pickRate}% (${m.pickCount}/${m.totalPicks}) picked: "${escapeHtml(m.wrongOptionText)}"</div>
+        </div>
+      `).join("")}
+    </div>
+  `;
 }
 
 function renderHeatmap(container, data) {
@@ -398,22 +476,97 @@ function renderTeacherList(container, teachers) {
 
 // ---------- case management ----------
 
+function regenerablePartsForCase(c) {
+  const parts = [
+    { key: "taskChunks", label: "Task clue tags" },
+    { key: "stimulus", label: "Evidence distractors" },
+    { key: "ownContentKeywords", label: "Own-content keywords" },
+  ];
+  for (const comp of c.components || []) {
+    if (comp.key === "purpose" || comp.key === "filler" || /^keyinfo\d+$/.test(comp.key)) {
+      parts.push({ key: comp.key, label: comp.label });
+    }
+  }
+  return parts;
+}
+
 function renderCaseList(cases) {
   const el = $("#caseList");
   if (!cases.length) { el.innerHTML = `<p class="hint">No teacher-uploaded cases yet — the two built-in tutorial cases are always available to pupils.</p>`; return; }
   el.innerHTML = cases.map((c) => `
-    <div class="case-row">
-      <div><b>${escapeHtml(c.title)}</b> <span class="hint">(${c.formal ? "Formal" : "Informal"})</span></div>
-      <button class="btn small" data-id="${c.id}">Delete</button>
+    <div class="case-row" style="flex-direction:column;align-items:stretch;">
+      <div class="row" style="justify-content:space-between;">
+        <div>
+          <b>${escapeHtml(c.title)}</b> <span class="hint">(${c.formal ? "Formal" : "Informal"})</span>
+          <span class="draft-badge" style="${c.status === "published" ? "background:var(--green);" : ""}">${c.status === "published" ? "Published" : "Draft"}</span>
+        </div>
+        <div class="row">
+          ${c.status !== "published" ? `<button class="btn small primary" data-action="publish" data-id="${c.id}">Publish</button>` : ""}
+          <button class="btn small" data-action="regen-toggle" data-id="${c.id}">🔄 Regenerate a part</button>
+          <button class="btn small" data-action="delete" data-id="${c.id}">Delete</button>
+        </div>
+      </div>
+      <p class="hint" style="margin:4px 0 0;">
+        Built by ${escapeHtml(c.created_by || "unknown")}${c.approved_by ? ` · Published by ${escapeHtml(c.approved_by)}` : ""}
+      </p>
+      <div class="regen-panel" data-panel-for="${c.id}" style="display:none;"></div>
     </div>
   `).join("");
-  $$("button[data-id]", el).forEach((btn) => {
+
+  $$('button[data-action="delete"]', el).forEach((btn) => {
     btn.addEventListener("click", async () => {
       if (!confirm("Delete this case? This cannot be undone.")) return;
       try {
         await api("/api/admin/cases/" + btn.dataset.id, { method: "DELETE" });
         renderDashboard({ text: "Case deleted." });
       } catch (e) { alert(e.message); }
+    });
+  });
+
+  $$('button[data-action="publish"]', el).forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      try {
+        await api("/api/admin/cases/" + btn.dataset.id + "/publish", { method: "PUT" });
+        renderDashboard({ text: "Case published — pupils can now play it." });
+      } catch (e) { alert(e.message); }
+    });
+  });
+
+  $$('button[data-action="regen-toggle"]', el).forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const caseId = btn.dataset.id;
+      const c = cases.find((x) => x.id === caseId);
+      const panel = $(`[data-panel-for="${caseId}"]`, el);
+      const isOpen = panel.style.display !== "none";
+      panel.style.display = isOpen ? "none" : "flex";
+      if (!isOpen) renderRegenPanel(panel, c);
+    });
+  });
+}
+
+function renderRegenPanel(panel, c) {
+  const parts = regenerablePartsForCase(c);
+  panel.innerHTML = parts.map((p) => `
+    <button class="btn small" data-regen-key="${p.key}">🔄 ${escapeHtml(p.label)}</button>
+  `).join("") + `<span class="regen-status hint"></span>`;
+  $$("[data-regen-key]", panel).forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const statusEl = $(".regen-status", panel);
+      btn.disabled = true;
+      statusEl.textContent = "Regenerating…";
+      try {
+        await api(`/api/admin/cases/${c.id}/regenerate`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ part: btn.dataset.regenKey }),
+        });
+        statusEl.textContent = "Done — refreshing case list.";
+        const data = await api("/api/admin/cases");
+        renderCaseList(data.cases || []);
+      } catch (e) {
+        statusEl.textContent = "Failed: " + e.message;
+        btn.disabled = false;
+      }
     });
   });
 }
@@ -499,8 +652,27 @@ function renderForm(form) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ title, taskText, keyInfo, formal, ownContentPrompt, ownContentIdeas, modelLetter, imageData }),
       });
-      msgEl.innerHTML = `<div class="msg ok">Case "${escapeHtml(title)}" created${res.aiUsed ? " with AI assistance" : " (rule-based fallback — no AI provider was reachable)"}. Pupils can play it right away.</div>`;
-      $("#preview", form).innerHTML = `<h3>Preview of generated structure</h3><pre>${escapeHtml(JSON.stringify(res.built, null, 2))}</pre>`;
+      const aiSummary = res.aiUsed
+        ? "fully AI-assisted"
+        : res.anyAiUsed
+        ? "partially AI-assisted (some parts used a template — see the preview below for which)"
+        : "built from templates (no AI provider was reachable)";
+      msgEl.innerHTML = `
+        <div class="msg ok">Case "${escapeHtml(title)}" created as a <b>draft</b> — ${aiSummary}. Review the preview below, then publish it when you're happy (pupils can't see it until then).</div>
+      `;
+      $("#preview", form).innerHTML = `
+        <button type="button" class="btn primary" id="publishNewCase">✅ Publish this case</button>
+        <h3 style="margin-top:16px;">What used AI vs. a template</h3>
+        <pre>${escapeHtml(JSON.stringify(res.aiDetail, null, 2))}</pre>
+        <h3>Preview of generated structure</h3>
+        <pre>${escapeHtml(JSON.stringify(res.built, null, 2))}</pre>
+      `;
+      $("#publishNewCase", form).addEventListener("click", async () => {
+        try {
+          await api("/api/admin/cases/" + res.id + "/publish", { method: "PUT" });
+          renderDashboard({ text: "Case published — pupils can now play it." });
+        } catch (e) { alert(e.message); }
+      });
       const data = await api("/api/admin/cases");
       renderCaseList(data.cases || []);
     } catch (e) {
