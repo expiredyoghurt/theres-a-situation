@@ -1,5 +1,6 @@
 /**
  * Boss! There's a situation! — Worker
+ * Version: v1.5
  * Serves the API. Static files (public/) are served automatically by the
  * [assets] binding for any request this file doesn't explicitly handle.
  *
@@ -19,9 +20,17 @@
  *   POST /api/admin/change-password -> { password } -> change own password
  *
  * Case management (admin or teacher):
- *   GET    /api/admin/cases         -> all cases incl. drafts + answer keys
- *   POST   /api/admin/cases         -> create a case from teacher input, AI-assisted
- *   DELETE /api/admin/cases/:id     -> remove a teacher-uploaded case
+ *   GET    /api/admin/cases            -> all cases incl. drafts + answer keys
+ *   POST   /api/admin/cases            -> AI-build a case from teacher input — always
+ *                                          created as a DRAFT, never immediately visible
+ *                                          to pupils (see "publish" below)
+ *   PUT    /api/admin/cases/:id/publish -> review passed — make a draft case live;
+ *                                          records who approved it and when
+ *   POST   /api/admin/cases/:id/regenerate -> { part } -> re-run just ONE small AI
+ *                                          piece of an existing case (e.g. "purpose",
+ *                                          "keyinfo1", "taskChunks") without rebuilding
+ *                                          the whole thing
+ *   DELETE /api/admin/cases/:id        -> remove a teacher-uploaded case
  *
  * Marking rubric (admin or teacher):
  *   GET /api/admin/rubric           -> { weights, masteryThreshold, total }
@@ -37,6 +46,10 @@
  * classes assigned to them):
  *   GET /api/admin/classes          -> classes this account may view
  *   GET /api/admin/overview?class=X -> heatmap data for one class
+ *   GET /api/admin/misconceptions?class=X -> common wrong-option mix-ups for one class
+ *
+ * AI provider health (admin or teacher):
+ *   GET /api/admin/ai-health        -> per-provider success/fail counts, last 24h
  *
  * AI marking runs through a provider fallback chain (see callAI() below):
  * OpenRouter -> Groq -> Gemini -> Cloudflare Workers AI. Every AI call in
@@ -46,7 +59,10 @@
 
 import { DEMO_CASES } from "./demoCases.js";
 
+const APP_VERSION = "v1.5";
 const SESSION_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+const AI_TIMEOUT_MS = 9000; // per-provider timeout before falling through the chain
+const REVIEW_COOLDOWN_HOURS = 20; // spaced-review: don't re-suggest a below-threshold case sooner than this
 
 // Fallback rubric, used only if rubric_config hasn't been created yet
 // (e.g. schema.sql not re-run against an older database).
@@ -78,8 +94,17 @@ export default {
       if (submitMatch && request.method === "POST") {
         return await submitCase(env, request, submitMatch[1]);
       }
+      if (path === "/api/version" && request.method === "GET") {
+        return json({ version: APP_VERSION });
+      }
       if (path === "/api/leaderboard" && request.method === "GET") {
         return await getLeaderboard(env, url);
+      }
+      if (path === "/api/practice-due" && request.method === "GET") {
+        return await getPracticeDue(env, url);
+      }
+      if (path === "/api/my-scores" && request.method === "GET") {
+        return await getMyScores(env, url);
       }
 
       // ---------- auth ----------
@@ -98,7 +123,15 @@ export default {
         return await requireAuth(env, request, () => adminListCases(env));
       }
       if (path === "/api/admin/cases" && request.method === "POST") {
-        return await requireAuth(env, request, () => adminCreateCase(env, request));
+        return await requireAuth(env, request, (session) => adminCreateCase(env, request, session));
+      }
+      const publishMatch = path.match(/^\/api\/admin\/cases\/([a-zA-Z0-9_-]+)\/publish$/);
+      if (publishMatch && request.method === "PUT") {
+        return await requireAuth(env, request, (session) => adminPublishCase(env, publishMatch[1], session));
+      }
+      const regenMatch = path.match(/^\/api\/admin\/cases\/([a-zA-Z0-9_-]+)\/regenerate$/);
+      if (regenMatch && request.method === "POST") {
+        return await requireAuth(env, request, () => adminRegenerateCasePart(env, request, regenMatch[1]));
       }
       const delMatch = path.match(/^\/api\/admin\/cases\/([a-zA-Z0-9_-]+)$/);
       if (delMatch && request.method === "DELETE") {
@@ -111,6 +144,9 @@ export default {
       }
       if (path === "/api/admin/rubric" && request.method === "PUT") {
         return await requireAuth(env, request, () => saveRubricRoute(env, request));
+      }
+      if (path === "/api/admin/ai-health" && request.method === "GET") {
+        return await requireAuth(env, request, () => adminAiHealth(env));
       }
 
       // ---------- teacher accounts (admin only) ----------
@@ -134,6 +170,9 @@ export default {
       }
       if (path === "/api/admin/overview" && request.method === "GET") {
         return await requireAuth(env, request, (session) => adminOverview(env, session, url));
+      }
+      if (path === "/api/admin/misconceptions" && request.method === "GET") {
+        return await requireAuth(env, request, (session) => adminMisconceptions(env, session, url));
       }
 
       // Not an API route — let the static asset handler take it.
@@ -220,11 +259,56 @@ async function getTeacherClasses(env, userId) {
   return (results || []).map((r) => r.class_name);
 }
 
+const LOGIN_FAIL_THRESHOLD = 5; // failures before any lockout kicks in
+const LOGIN_LOCK_CAP_MINUTES = 30; // ceiling on the exponential backoff
+
+/** Returns an ISO lock-expiry string if this username is currently
+ * locked out, or null if it's free to attempt. Fails open (no lockout)
+ * if the table isn't migrated yet, rather than blocking all logins. */
+async function checkLoginLock(env, username) {
+  try {
+    const row = await env.DB.prepare("SELECT locked_until FROM login_attempts WHERE username = ?").bind(username).first();
+    if (row && row.locked_until && new Date(row.locked_until.replace(" ", "T") + "Z").getTime() > Date.now()) {
+      return row.locked_until;
+    }
+  } catch (e) { /* login_attempts table not migrated — no lockout enforced */ }
+  return null;
+}
+
+/** Exponential backoff after LOGIN_FAIL_THRESHOLD consecutive failures:
+ * 1 min, 2 min, 4 min, ... capped at LOGIN_LOCK_CAP_MINUTES. */
+async function recordLoginFailure(env, username) {
+  try {
+    const row = await env.DB.prepare("SELECT fail_count FROM login_attempts WHERE username = ?").bind(username).first();
+    const failCount = (row?.fail_count || 0) + 1;
+    let lockedUntil = null;
+    if (failCount >= LOGIN_FAIL_THRESHOLD) {
+      const lockMinutes = Math.min(LOGIN_LOCK_CAP_MINUTES, Math.pow(2, failCount - LOGIN_FAIL_THRESHOLD));
+      lockedUntil = new Date(Date.now() + lockMinutes * 60000).toISOString();
+    }
+    await env.DB.prepare(
+      "INSERT INTO login_attempts (username, fail_count, locked_until) VALUES (?,?,?) " +
+      "ON CONFLICT(username) DO UPDATE SET fail_count = excluded.fail_count, locked_until = excluded.locked_until"
+    ).bind(username, failCount, lockedUntil).run();
+  } catch (e) { /* login_attempts table not migrated — fails open */ }
+}
+
+async function clearLoginFailures(env, username) {
+  try {
+    await env.DB.prepare("DELETE FROM login_attempts WHERE username = ?").bind(username).run();
+  } catch (e) { /* ignore */ }
+}
+
 async function adminLogin(env, request) {
   const body = await request.json().catch(() => ({}));
   const username = (body.username || "").toString().trim();
   const password = (body.password || "").toString();
   if (!username || !password) return json({ error: "Username and password required" }, 400);
+
+  const lockedUntil = await checkLoginLock(env, username);
+  if (lockedUntil) {
+    return json({ error: `Too many failed attempts for this account. Try again after ${lockedUntil} UTC.` }, 429);
+  }
 
   let userRow;
   try {
@@ -246,12 +330,18 @@ async function adminLogin(env, request) {
       ).bind(username, hash, salt).run();
       userRow = { id: inserted.meta.last_row_id, username, role: "admin" };
     } else {
+      await recordLoginFailure(env, username);
       return json({ error: "Invalid credentials" }, 401);
     }
   } else {
     const ok = await verifyPassword(password, userRow.password_salt, userRow.password_hash);
-    if (!ok) return json({ error: "Invalid credentials" }, 401);
+    if (!ok) {
+      await recordLoginFailure(env, username);
+      return json({ error: "Invalid credentials" }, 401);
+    }
   }
+
+  await clearLoginFailures(env, username);
 
   const token = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
@@ -403,23 +493,33 @@ async function adminListClasses(env, session) {
   return json({ classes: visible });
 }
 
+/** Shared access check: admins can view any class; teachers only classes
+ * assigned to them. Returns an error Response to short-circuit with, or
+ * null if access is fine. */
+async function checkClassAccess(env, session, className) {
+  if (session.role === "admin") return null;
+  const assigned = await getTeacherClasses(env, session.userId);
+  if (!assigned.map((c) => c.toUpperCase()).includes(className)) {
+    return json({ error: "You are not assigned to that class" }, 403);
+  }
+  return null;
+}
+
 async function adminOverview(env, session, url) {
   const className = (url.searchParams.get("class") || "").trim().toUpperCase();
   if (!className) return json({ error: "Missing ?class= parameter" }, 400);
-
-  if (session.role !== "admin") {
-    const assigned = await getTeacherClasses(env, session.userId);
-    if (!assigned.map((c) => c.toUpperCase()).includes(className)) {
-      return json({ error: "You are not assigned to that class" }, 403);
-    }
-  }
+  const denied = await checkClassAccess(env, session, className);
+  if (denied) return denied;
 
   let rows = [];
   try {
+    // Group by device_id as well as name — two pupils who happen to share
+    // a first name (common in a class of 30) would otherwise have their
+    // scores silently merged into one heatmap row.
     const { results } = await env.DB.prepare(
-      `SELECT player_name, case_title, MAX(score) as best, MAX(max_score) as mx
+      `SELECT player_name, device_id, case_title, MAX(score) as best, MAX(max_score) as mx
        FROM leaderboard WHERE player_class = ?
-       GROUP BY player_name, case_title
+       GROUP BY player_name, device_id, case_title
        ORDER BY player_name`
     ).bind(className).all();
     rows = results || [];
@@ -428,10 +528,26 @@ async function adminOverview(env, session, url) {
   }
 
   const caseTitles = Array.from(new Set(rows.map((r) => r.case_title)));
+
+  // Only disambiguate a name with a device-id suffix when there's an
+  // actual collision (2+ distinct device ids sharing that name) — legacy
+  // rows from before device_id existed all share an empty string and
+  // should keep behaving like before (merged), not sprout a fake suffix.
+  const devicesByName = new Map();
+  for (const r of rows) {
+    if (!devicesByName.has(r.player_name)) devicesByName.set(r.player_name, new Set());
+    devicesByName.get(r.player_name).add(r.device_id || "");
+  }
+
   const byPupil = new Map();
   for (const r of rows) {
-    if (!byPupil.has(r.player_name)) byPupil.set(r.player_name, { name: r.player_name, scores: {} });
-    byPupil.get(r.player_name).scores[r.case_title] = { score: r.best, max: r.mx };
+    const pupilKey = r.player_name + "||" + (r.device_id || "");
+    if (!byPupil.has(pupilKey)) {
+      const hasCollision = (devicesByName.get(r.player_name)?.size || 1) > 1;
+      const displayName = hasCollision && r.device_id ? `${r.player_name} (#${r.device_id.slice(0, 4)})` : r.player_name;
+      byPupil.set(pupilKey, { name: displayName, scores: {} });
+    }
+    byPupil.get(pupilKey).scores[r.case_title] = { score: r.best, max: r.mx };
   }
   const pupils = Array.from(byPupil.values()).map((p) => {
     const pcts = caseTitles
@@ -443,6 +559,70 @@ async function adminOverview(env, session, url) {
   pupils.sort((a, b) => (b.average ?? -1) - (a.average ?? -1));
 
   return json({ class: className, cases: caseTitles, pupils });
+}
+
+/**
+ * Common-mistakes view: for a class, find MCQ components where a
+ * particular WRONG option gets picked disproportionately often — a
+ * signal of a class-wide misconception ("half the class thinks this is
+ * a formal sign-off") that a plain average score can't show.
+ */
+async function adminMisconceptions(env, session, url) {
+  const className = (url.searchParams.get("class") || "").trim().toUpperCase();
+  if (!className) return json({ error: "Missing ?class= parameter" }, 400);
+  const denied = await checkClassAccess(env, session, className);
+  if (denied) return denied;
+
+  let rows = [];
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT case_id, case_title, component_key, option_id, COUNT(*) as picks
+       FROM option_picks WHERE player_class = ?
+       GROUP BY case_id, component_key, option_id
+       ORDER BY case_id, component_key`
+    ).bind(className).all();
+    rows = results || [];
+  } catch (e) {
+    return json({ class: className, misconceptions: [], note: "option_picks table not migrated yet — run schema.sql against your D1 database." });
+  }
+  if (!rows.length) return json({ class: className, misconceptions: [] });
+
+  const grouped = new Map();
+  for (const r of rows) {
+    const key = r.case_id + "::" + r.component_key;
+    if (!grouped.has(key)) grouped.set(key, { caseId: r.case_id, caseTitle: r.case_title, componentKey: r.component_key, options: [] });
+    grouped.get(key).options.push({ optionId: r.option_id, picks: r.picks });
+  }
+
+  const misconceptions = [];
+  const caseCache = new Map();
+  for (const g of grouped.values()) {
+    if (!caseCache.has(g.caseId)) caseCache.set(g.caseId, await findFullCase(env, g.caseId));
+    const full = caseCache.get(g.caseId);
+    if (!full) continue;
+    const correctId = full.answerKey?.components?.[g.componentKey];
+    const comp = full.components.find((c) => c.key === g.componentKey);
+    if (!comp) continue;
+    const totalPicks = g.options.reduce((s, o) => s + o.picks, 0);
+    const wrongOptions = g.options.filter((o) => o.optionId !== correctId).sort((a, b) => b.picks - a.picks);
+    const topWrong = wrongOptions[0];
+    // Only surface it if there's a real sample size and it's a genuinely
+    // popular wrong pick, not just noise from one or two attempts.
+    if (topWrong && totalPicks >= 4 && topWrong.picks / totalPicks >= 0.3) {
+      const optionText = comp.options.find((o) => o.id === topWrong.optionId)?.text || "(option text unavailable)";
+      misconceptions.push({
+        caseTitle: g.caseTitle,
+        component: comp.label,
+        wrongOptionText: optionText,
+        pickCount: topWrong.picks,
+        totalPicks,
+        pickRate: Math.round((topWrong.picks / totalPicks) * 100),
+      });
+    }
+  }
+  misconceptions.sort((a, b) => b.pickRate - a.pickRate);
+
+  return json({ class: className, misconceptions });
 }
 
 /** Strip fields pupils shouldn't see (correct answers, keyword lists). */
@@ -518,6 +698,20 @@ async function submitCase(env, request, id) {
   const body = await request.json();
   const name = (body.name || "Anonymous Detective").toString().slice(0, 40);
   const playerClass = (body.playerClass || "").toString().slice(0, 20).trim().toUpperCase();
+  // A random id generated once in the pupil's browser (see index.html) —
+  // disambiguates two same-named pupils in the same class so their
+  // scores don't merge into one row on the heatmap/misconceptions view.
+  const deviceId = (body.deviceId || "").toString().trim().slice(0, 40);
+  const isFormal = full.formal !== undefined ? !!full.formal : true;
+
+  // A formal letter is signed off with a full name; an informal note only
+  // needs a first name. Validated server-side too, since the client check
+  // is just a UX nicety and shouldn't be the only thing enforcing it.
+  const signOffName = (body.signOffName || "").toString().trim().slice(0, 60);
+  const signOffWordCount = signOffName ? signOffName.split(/\s+/).filter(Boolean).length : 0;
+  if (!signOffName || (isFormal && signOffWordCount < 2)) {
+    return json({ error: isFormal ? "Please sign off with your first and last name." : "Please sign off with your first name." }, 400);
+  }
 
   const rubric = await getRubric(env);
   const w = rubric.weights;
@@ -574,27 +768,36 @@ async function submitCase(env, request, id) {
   const paraScore = Math.round((paraHits / allKeys.length) * w.paragraphing);
   breakdown.paragraphing = { score: paraScore, max: w.paragraphing };
 
-  // 5) Own content plausibility — keyword match, AI-assisted if available
+  // 5) Own content plausibility — keyword match, AI-assisted when ambiguous
   const ownContent = (body.ownContent || "").toString().slice(0, 500);
-  let ownScore = scoreOwnContentByKeyword(ownContent, full.ownContentKeywords, w.ownContent);
-  let ownAiNote = null;
-  if (ownContent.trim().length > 0) {
-    try {
-      const aiJudged = await aiJudgeOwnContent(env, full, ownContent, w.ownContent);
-      if (aiJudged) { ownScore = aiJudged.score; ownAiNote = aiJudged.note; }
-    } catch (e) { /* fall back silently to keyword score */ }
-  }
-  breakdown.ownContent = { score: ownScore, max: w.ownContent, aiNote: ownAiNote };
+  const ownKeywordScore = scoreOwnContentByKeyword(ownContent, full.ownContentKeywords, w.ownContent);
+  const ownRatio = w.ownContent > 0 ? ownKeywordScore / w.ownContent : 0;
+  // Only call the AI marker when the deterministic score is genuinely
+  // ambiguous (neither confidently low nor confidently high) — at the
+  // extremes the AI is unlikely to change the score enough to justify
+  // the extra latency and provider load.
+  const ownNeedsAi = ownContent.trim().length > 0 && ownRatio > 0.15 && ownRatio < 0.85;
 
   // 6) AI holistic read of the assembled letter vs model answer
-  const assembledLetter = assembleLetter(full, componentChoices, paragraphBreaks);
-  let holisticScore = Math.round(jaccardSimilarity(assembledLetter, full.model_letter) * w.overallQuality);
-  let holisticNote = null;
-  try {
-    const aiHolistic = await aiHolisticMark(env, full, assembledLetter, w.overallQuality);
-    if (aiHolistic) { holisticScore = aiHolistic.score; holisticNote = aiHolistic.note; }
-  } catch (e) { /* fall back silently */ }
-  breakdown.overallQuality = { score: holisticScore, max: w.overallQuality, aiNote: holisticNote };
+  const assembledLetter = assembleLetter(full, componentChoices, paragraphBreaks, signOffName);
+  const holisticFallbackScore = Math.round(jaccardSimilarity(assembledLetter, full.model_letter) * w.overallQuality);
+  const holisticRatio = w.overallQuality > 0 ? holisticFallbackScore / w.overallQuality : 0;
+  const holisticNeedsAi = holisticRatio > 0.15 && holisticRatio < 0.85;
+
+  // Run both AI markers in parallel (instead of one after another) — this
+  // is the pupil-facing latency-sensitive path, so waiting for two
+  // independent calls sequentially would roughly double how long they
+  // stare at a spinner after clicking submit for no benefit.
+  const [ownAiResult, holisticAiResult] = await Promise.all([
+    ownNeedsAi ? aiJudgeOwnContent(env, full, ownContent, w.ownContent).catch(() => null) : Promise.resolve(null),
+    holisticNeedsAi ? aiHolisticMark(env, full, assembledLetter, w.overallQuality).catch(() => null) : Promise.resolve(null),
+  ]);
+
+  const ownScore = ownAiResult ? ownAiResult.score : ownKeywordScore;
+  breakdown.ownContent = { score: ownScore, max: w.ownContent, aiNote: ownAiResult ? ownAiResult.note : null };
+
+  const holisticScore = holisticAiResult ? holisticAiResult.score : holisticFallbackScore;
+  breakdown.overallQuality = { score: holisticScore, max: w.overallQuality, aiNote: holisticAiResult ? holisticAiResult.note : null };
 
   const total = Object.values(breakdown).reduce((s, b) => s + b.score, 0);
 
@@ -609,9 +812,21 @@ async function submitCase(env, request, id) {
 
   try {
     await env.DB.prepare(
-      "INSERT INTO leaderboard (player_name, player_class, case_id, case_title, score, max_score, breakdown) VALUES (?,?,?,?,?,?,?)"
-    ).bind(name, playerClass, full.id, full.title, total, total_max, JSON.stringify(breakdown)).run();
+      "INSERT INTO leaderboard (player_name, player_class, case_id, case_title, score, max_score, breakdown, device_id) VALUES (?,?,?,?,?,?,?,?)"
+    ).bind(name, playerClass, full.id, full.title, total, total_max, JSON.stringify(breakdown), deviceId).run();
   } catch (e) { /* leaderboard table may not be migrated; still return the score */ }
+
+  // Record each MCQ pick (one row per component) so the admin dashboard
+  // can surface class-wide misconceptions later — best-effort, never
+  // blocks the pupil's result if the table isn't migrated yet.
+  try {
+    const pickStmts = compKeys
+      .filter((key) => componentChoices[key])
+      .map((key) => env.DB.prepare(
+        "INSERT INTO option_picks (case_id, case_title, component_key, option_id, player_class) VALUES (?,?,?,?,?)"
+      ).bind(full.id, full.title, key, componentChoices[key], playerClass));
+    if (pickStmts.length) await env.DB.batch(pickStmts);
+  } catch (e) { /* option_picks table may not be migrated; safe to skip */ }
 
   return json({
     score: total, max: total_max, threshold: rubric.masteryThreshold, breakdown,
@@ -627,7 +842,7 @@ function scoreOwnContentByKeyword(text, keywordGroups, max) {
   return Math.round(Math.min(1, ratio + (text.trim().length > 15 ? 0.15 : 0)) * max);
 }
 
-function assembleLetter(full, componentChoices, paragraphBreaksSet) {
+function assembleLetter(full, componentChoices, paragraphBreaksSet, signOffName) {
   let out = "";
   for (const comp of full.components) {
     const chosenId = componentChoices[comp.key];
@@ -638,6 +853,7 @@ function assembleLetter(full, componentChoices, paragraphBreaksSet) {
     else if (out.length) out += " ";
     out += text;
   }
+  if (signOffName) out += (out.length ? "\n" : "") + signOffName;
   return out.trim();
 }
 
@@ -659,9 +875,26 @@ function jaccardSimilarity(a, b) {
 // configured, so the chain degrades all the way to Workers AI, and finally
 // to `null` (callers fall back to deterministic scoring) if none work.
 
+/** Model IDs eligible for OpenRouter's zero-cost tier: either the
+ * "openrouter/free" router (which auto-selects a free model per request,
+ * see https://openrouter.ai/openrouter/free) or any model ID ending in
+ * the ":free" variant suffix. Anything else is a paid model. */
+function isFreeOpenRouterModel(model) {
+  return model === "openrouter/free" || /:free$/.test(model);
+}
+
 async function callOpenRouter(env, prompt, maxTokens) {
   const key = env.OPENROUTER_API_KEY;
   if (!key) return null;
+  // Default to OpenRouter's Free Models Router, which randomly selects a
+  // free model per request (filtered to whatever the request needs) —
+  // this can never incur a charge. If OPENROUTER_MODEL is overridden to
+  // anything that ISN'T "openrouter/free" or a ":free"-suffixed model
+  // id, silently fall back to "openrouter/free" instead — the intent of
+  // this deployment is to only ever call free OpenRouter inference,
+  // never to risk an accidental paid model slipping in via a secret.
+  const requestedModel = env.OPENROUTER_MODEL || "openrouter/free";
+  const model = isFreeOpenRouterModel(requestedModel) ? requestedModel : "openrouter/free";
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -671,7 +904,7 @@ async function callOpenRouter(env, prompt, maxTokens) {
       "X-Title": "Boss! There's a situation!",
     },
     body: JSON.stringify({
-      model: env.OPENROUTER_MODEL || "meta-llama/llama-3.1-8b-instruct",
+      model,
       messages: [{ role: "user", content: prompt }],
       max_tokens: maxTokens,
     }),
@@ -684,11 +917,16 @@ async function callOpenRouter(env, prompt, maxTokens) {
 async function callGroq(env, prompt, maxTokens) {
   const key = env.GROQ_API_KEY;
   if (!key) return null;
+  // llama-3.1-8b-instant was deprecated by Groq on 2026-06-17 and
+  // decommissioned 2026-08-16; openai/gpt-oss-20b is Groq's own
+  // recommended replacement and remains available on Groq's free tier
+  // (which — per Groq's pricing page — includes every model with no
+  // credit card required, just rate-limited).
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: env.GROQ_MODEL || "llama-3.1-8b-instant",
+      model: env.GROQ_MODEL || "openai/gpt-oss-20b",
       messages: [{ role: "user", content: prompt }],
       max_tokens: maxTokens,
     }),
@@ -701,7 +939,11 @@ async function callGroq(env, prompt, maxTokens) {
 async function callGemini(env, prompt, maxTokens) {
   const key = env.GEMINI_API_KEY;
   if (!key) return null;
-  const model = env.GEMINI_MODEL || "gemini-1.5-flash";
+  // gemini-1.5-flash has been fully discontinued by Google. As of
+  // April 2026, Google's free tier only covers Flash and Flash-Lite
+  // models (Pro models are paid-only) — gemini-2.5-flash-lite is the
+  // current GA model matching that free-tier eligibility.
+  const model = env.GEMINI_MODEL || "gemini-2.5-flash-lite";
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
     {
@@ -727,15 +969,54 @@ async function callWorkersAIText(env, prompt, maxTokens) {
   return res?.response || res?.result || null;
 }
 
+/** Races a promise against a timeout so a hung provider can't stall the
+ * whole fallback chain — after `ms`, this rejects and callAI moves on to
+ * the next provider (the original call may still finish in the
+ * background on Workers AI, but we no longer wait on it). */
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`AI provider timed out after ${ms}ms`)), ms);
+    promise.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); }
+    );
+  });
+}
+
+/** Best-effort write to ai_call_log — never throws, never blocks on
+ * failure. Adds a small amount of latency to each provider attempt in
+ * exchange for visibility into which provider is actually answering
+ * (see adminAiHealth) — acceptable since it's one indexed insert. */
+async function logAiCall(env, provider, ok) {
+  try {
+    await env.DB.prepare("INSERT INTO ai_call_log (provider, ok) VALUES (?,?)").bind(provider, ok ? 1 : 0).run();
+  } catch (e) { /* ai_call_log table not migrated yet — logging is best-effort */ }
+}
+
 /** Try OpenRouter, then Groq, then Gemini, then Workers AI. Returns the
- * raw text response from whichever provider answers first, or null. */
+ * raw text response from whichever provider answers first, or null. Each
+ * provider gets at most AI_TIMEOUT_MS before we give up on it and try
+ * the next, so a slow/hanging provider degrades gracefully instead of
+ * blocking the whole chain (and the pupil's submit button). Every
+ * attempt (success or failure) is logged to ai_call_log so the admin
+ * dashboard can show real provider health instead of a black box. */
 async function callAI(env, prompt, maxTokens = 500) {
-  const providers = [callOpenRouter, callGroq, callGemini, callWorkersAIText];
-  for (const provider of providers) {
+  const providers = [
+    ["openrouter", callOpenRouter, !!env.OPENROUTER_API_KEY],
+    ["groq", callGroq, !!env.GROQ_API_KEY],
+    ["gemini", callGemini, !!env.GEMINI_API_KEY],
+    ["workers-ai", callWorkersAIText, !!env.AI],
+  ];
+  for (const [providerName, provider, configured] of providers) {
+    if (!configured) continue; // not set up at all — skip silently, don't count as a "failure"
     try {
-      const text = await provider(env, prompt, maxTokens);
-      if (text) return text;
-    } catch (e) { /* this provider failed or errored — try the next one */ }
+      const text = await withTimeout(provider(env, prompt, maxTokens), AI_TIMEOUT_MS);
+      if (text) { await logAiCall(env, providerName, true); return text; }
+      await logAiCall(env, providerName, false);
+    } catch (e) {
+      await logAiCall(env, providerName, false);
+      /* this provider failed, errored, or timed out — try the next one */
+    }
   }
   return null;
 }
@@ -816,6 +1097,75 @@ async function getLeaderboard(env, url) {
   }
 }
 
+/**
+ * Spaced review: a case is "due" for a pupil if their most recent attempt
+ * scored below the CURRENT mastery threshold and enough time has passed
+ * since that attempt (REVIEW_COOLDOWN_HOURS) — simple time-boxed spacing
+ * rather than a full SM-2 scheduler, but enough to stop the game being
+ * purely "pick whatever looks fun" and nudge pupils back to what they
+ * haven't mastered yet, after a delay rather than in an immediate loop.
+ */
+async function getPracticeDue(env, url) {
+  const name = (url.searchParams.get("name") || "").toString().trim().slice(0, 40);
+  const playerClass = (url.searchParams.get("playerClass") || "").toString().trim().slice(0, 20).toUpperCase();
+  const deviceId = (url.searchParams.get("deviceId") || "").toString().trim().slice(0, 40);
+  if (!name) return json({ due: [] });
+
+  const rubric = await getRubric(env);
+  let rows = [];
+  try {
+    // Filter by device_id too when the client supplies one, so two
+    // same-named pupils in the same class don't see each other's due
+    // list merged together. Falls back to name+class alone for older
+    // clients/cached pages that haven't picked up a deviceId yet.
+    const query = deviceId
+      ? `SELECT case_id, case_title, score, max_score, created_at FROM leaderboard
+         WHERE player_name = ? AND player_class = ? AND device_id = ? ORDER BY created_at DESC`
+      : `SELECT case_id, case_title, score, max_score, created_at FROM leaderboard
+         WHERE player_name = ? AND player_class = ? ORDER BY created_at DESC`;
+    const stmt = deviceId ? env.DB.prepare(query).bind(name, playerClass, deviceId) : env.DB.prepare(query).bind(name, playerClass);
+    const { results } = await stmt.all();
+    rows = results || [];
+  } catch (e) {
+    return json({ due: [] });
+  }
+
+  const latestByCase = new Map();
+  for (const r of rows) if (!latestByCase.has(r.case_id)) latestByCase.set(r.case_id, r);
+
+  const now = Date.now();
+  const cooldownMs = REVIEW_COOLDOWN_HOURS * 60 * 60 * 1000;
+  const due = [];
+  for (const r of latestByCase.values()) {
+    if (r.score >= rubric.masteryThreshold) continue; // already mastered — nothing to resurface
+    const lastPlayedMs = new Date(r.created_at.replace(" ", "T") + "Z").getTime();
+    if (!Number.isFinite(lastPlayedMs) || now - lastPlayedMs >= cooldownMs) {
+      due.push({ caseId: r.case_id, caseTitle: r.case_title, lastScore: r.score, max: r.max_score, lastPlayed: r.created_at });
+    }
+  }
+  return json({ due, cooldownHours: REVIEW_COOLDOWN_HOURS, masteryThreshold: rubric.masteryThreshold });
+}
+
+/** Pupil-facing "My Scores" — their own attempt history, most recent first. */
+async function getMyScores(env, url) {
+  const name = (url.searchParams.get("name") || "").toString().trim().slice(0, 40);
+  const playerClass = (url.searchParams.get("playerClass") || "").toString().trim().slice(0, 20).toUpperCase();
+  const deviceId = (url.searchParams.get("deviceId") || "").toString().trim().slice(0, 40);
+  if (!name) return json({ scores: [] });
+  try {
+    const query = deviceId
+      ? `SELECT case_title, score, max_score, created_at FROM leaderboard
+         WHERE player_name = ? AND player_class = ? AND device_id = ? ORDER BY created_at DESC LIMIT 30`
+      : `SELECT case_title, score, max_score, created_at FROM leaderboard
+         WHERE player_name = ? AND player_class = ? ORDER BY created_at DESC LIMIT 30`;
+    const stmt = deviceId ? env.DB.prepare(query).bind(name, playerClass, deviceId) : env.DB.prepare(query).bind(name, playerClass);
+    const { results } = await stmt.all();
+    return json({ scores: results || [] });
+  } catch (e) {
+    return json({ scores: [] });
+  }
+}
+
 // ---------- admin: case management ----------
 
 async function adminListCases(env) {
@@ -826,6 +1176,22 @@ async function adminListCases(env) {
 async function adminDeleteCase(env, id) {
   await env.DB.prepare("DELETE FROM cases WHERE id = ?").bind(id).run();
   return json({ ok: true });
+}
+
+/** Review gate: a freshly AI-built case starts as a draft (see
+ * adminCreateCase) and is invisible to pupils until a teacher/admin
+ * explicitly publishes it here. Records who approved it and when,
+ * separately from who originally built it (created_by), since a
+ * different teacher may review someone else's draft. */
+async function adminPublishCase(env, id, session) {
+  const row = await env.DB.prepare("SELECT id, status FROM cases WHERE id = ?").bind(id).first();
+  if (!row) return json({ error: "Case not found" }, 404);
+  if (row.status === "published") return json({ ok: true, alreadyPublished: true });
+  const approvedAt = new Date().toISOString();
+  await env.DB.prepare(
+    "UPDATE cases SET status = 'published', approved_by = ?, approved_at = ? WHERE id = ?"
+  ).bind(session.username, approvedAt, id).run();
+  return json({ ok: true, approvedBy: session.username, approvedAt });
 }
 
 /**
@@ -839,8 +1205,14 @@ async function adminDeleteCase(env, id) {
  * paragraph answer key, and keyword groups for own-content marking.
  * If no provider is reachable, a rule-based fallback is used so the
  * case is still playable (just less varied distractors).
+ *
+ * The case is always created as a DRAFT — never immediately visible to
+ * pupils — since the content is machine-generated and the teacher
+ * hasn't reviewed the JSON preview yet at the point of creation. A
+ * separate explicit "Publish" action (adminPublishCase) makes it live,
+ * and records who approved it.
  */
-async function adminCreateCase(env, request) {
+async function adminCreateCase(env, request, session) {
   const body = await request.json();
   const required = ["title", "taskText", "keyInfo", "modelLetter"];
   for (const f of required) {
@@ -851,118 +1223,377 @@ async function adminCreateCase(env, request) {
   const formal = !!body.formal;
   const id = newId("case");
 
-  let built = await aiBuildCase(env, body, formal).catch(() => null);
-  const aiUsed = !!built;
-  if (!built) built = ruleBasedBuildCase(body, formal);
+  const { built, aiDetail, anyAiUsed, allAiUsed } = await aiBuildCase(env, body, formal);
 
   await env.DB.prepare(
     `INSERT INTO cases (id, title, image_data, task_text, task_chunks, formal,
       stimulus_points, own_content_prompt, own_content_keywords, components,
-      answer_key, model_letter, status)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
+      answer_key, model_letter, status, created_by)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).bind(
     id, body.title, body.imageData || null, body.taskText,
     JSON.stringify(built.taskChunks), formal ? 1 : 0,
     JSON.stringify(built.stimulusPoints), body.ownContentPrompt || "",
     JSON.stringify(built.ownContentKeywords), JSON.stringify(built.components),
-    JSON.stringify(built.answerKey), body.modelLetter, "published"
+    JSON.stringify(built.answerKey), body.modelLetter, "draft", session.username
   ).run();
 
-  return json({ id, built, aiUsed });
+  return json({ id, built, aiUsed: allAiUsed, anyAiUsed, aiDetail, status: "draft" });
 }
 
-/** Ask the AI provider chain to build the full playable structure in one shot. */
-async function aiBuildCase(env, body, formal) {
-  const prompt = `You are building a PSLE (Singapore Primary 6) English situational writing practice game.
-Register: ${formal ? "FORMAL" : "INFORMAL"}.
-Task given to pupils: "${body.taskText}"
-Key information points the teacher wants covered: ${JSON.stringify(body.keyInfo)}
-Own-content question (pupil must supply an idea not given in the stimulus): "${body.ownContentPrompt || "(none given — infer one plausible open-ended point from the task)"}"
-Acceptable own-content ideas from teacher (may be empty): ${JSON.stringify(body.ownContentIdeas || [])}
-Model/reference letter written by the teacher:
-"""${body.modelLetter}"""
+/**
+ * Regenerate just ONE piece of an already-built case — e.g. a teacher
+ * likes everything except the "purpose" MCQ, or one key-info distractor
+ * set reads oddly. Re-runs the same small, focused AI call that piece
+ * used during the original build (see aiBuildCase) and writes only the
+ * affected column(s) back, rather than rebuilding the whole case.
+ *
+ * `part` is one of: "taskChunks", "stimulus", "ownContentKeywords",
+ * "purpose", "filler", or "keyinfoN" (matching that component's key).
+ */
+async function adminRegenerateCasePart(env, request, caseId) {
+  const body = await request.json().catch(() => ({}));
+  const part = (body.part || "").toString();
+  const row = await env.DB.prepare("SELECT * FROM cases WHERE id = ?").bind(caseId).first();
+  if (!row) return json({ error: "Case not found" }, 404);
 
-Produce STRICT JSON only, matching exactly this shape:
-{
-  "taskChunks": [{"id":"c1","text":"<substring of the task text>","type":"purpose|audience|context|other"}, ... covering the WHOLE task text broken into short phrases],
-  "stimulusPoints": [{"id":"s1","text":"<short key info phrase>","relevant":true|false}, ... include all teacher key info points as relevant:true PLUS 2 plausible but irrelevant distractor details with relevant:false],
-  "ownContentKeywords": [["keyword1","synonym1"], ["keyword2","synonym2"]],
-  "components": [
-    {"key":"salutation","label":"Salutation","options":[{"id":"a","text":"..."},{"id":"b","text":"..."},{"id":"c","text":"..."},{"id":"d","text":"..."}]},
-    {"key":"greeting","label":"Opening line","options":[...4 options...]},
-    {"key":"purpose","label":"Purpose","options":[...4 options...]},
-    {"key":"keyinfo1","label":"Key information 1","options":[...4 options...]},
-    {"key":"keyinfo2","label":"Key information 2","options":[...4 options...]},
-    {"key":"filler","label":"Additional context","options":[...4 options...]},
-    {"key":"signoff","label":"Sign-off","options":[...4 options...]}
-  ],
-  "answerKey": {
-    "components": {"salutation":"a","greeting":"a","purpose":"a","keyinfo1":"a","keyinfo2":"a","filler":"a","signoff":"a"},
-    "paragraphBreaks": ["purpose","keyinfo1","filler"]
+  const full = fullCaseFromRow(row);
+  const formal = !!row.formal;
+  const taskText = row.task_text;
+  const keyInfo = full.stimulusPoints.filter((p) => p.relevant).map((p) => p.text);
+
+  if (part === "taskChunks") {
+    const chunks = await aiTaskChunks(env, taskText);
+    full.taskChunks = chunks || fallbackTaskChunks(taskText);
+  } else if (part === "stimulus") {
+    const extra = await aiStimulusDistractors(env, keyInfo, taskText);
+    full.stimulusPoints = [
+      ...keyInfo.map((text, i) => ({ id: `s${i + 1}`, text, relevant: true })),
+      ...(extra && extra.length ? extra : ["Extra flavour detail not required in your letter"])
+        .map((text, i) => ({ id: `sx${i + 1}`, text, relevant: false })),
+    ];
+  } else if (part === "ownContentKeywords") {
+    // Note: the teacher's original acceptable-idea list isn't persisted
+    // separately from the built keyword groups, so a regenerate here
+    // asks the AI to suggest fresh plausible ideas from the prompt alone
+    // rather than replaying the teacher's original list verbatim.
+    const groups = await aiOwnContentKeywords(env, row.own_content_prompt, null);
+    full.ownContentKeywords = groups || [];
+  } else if (part === "purpose" || part === "filler") {
+    const set = part === "purpose" ? await aiPurposeOption(env, taskText, formal) : await aiFillerOption(env, taskText, formal);
+    const fallbackSet = part === "purpose" ? fallbackPurposeSet(taskText) : fallbackFillerSet(formal);
+    const label = full.components.find((c) => c.key === part)?.label || (part === "purpose" ? "Purpose" : "Additional context");
+    const newComp = buildOptionComponent(part, label, set || fallbackSet);
+    full.components = full.components.map((c) => (c.key === part ? { key: newComp.key, label: newComp.label, options: newComp.options } : c));
+    full.answerKey.components[part] = newComp.correctId;
+  } else if (/^keyinfo\d+$/.test(part)) {
+    const comp = full.components.find((c) => c.key === part);
+    if (!comp) return json({ error: "Component not found on this case" }, 404);
+    const correctId = full.answerKey.components[part];
+    const correctText = comp.options.find((o) => o.id === correctId)?.text || "";
+    const sets = await aiKeyInfoDistractorsBatch(env, [correctText.replace(/\.$/, "")], taskText);
+    const distractors = (sets && sets[0]) || fallbackKeyInfoDistractors();
+    const newComp = buildOptionComponent(part, comp.label, { correct: correctText, distractors });
+    full.components = full.components.map((c) => (c.key === part ? { key: newComp.key, label: newComp.label, options: newComp.options } : c));
+    full.answerKey.components[part] = newComp.correctId;
+  } else {
+    return json({ error: `Unknown or non-regeneratable part: ${part}` }, 400);
+  }
+
+  await env.DB.prepare(
+    "UPDATE cases SET task_chunks = ?, stimulus_points = ?, own_content_keywords = ?, components = ?, answer_key = ? WHERE id = ?"
+  ).bind(
+    JSON.stringify(full.taskChunks), JSON.stringify(full.stimulusPoints),
+    JSON.stringify(full.ownContentKeywords), JSON.stringify(full.components),
+    JSON.stringify(full.answerKey), caseId
+  ).run();
+
+  return json({ ok: true, part, built: full });
+}
+
+/** Aggregate provider health from ai_call_log over the last 24 hours, so
+ * an admin can tell whether the primary provider is actually answering
+ * or every request is silently falling through the chain to a backup. */
+async function adminAiHealth(env) {
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT provider, ok, COUNT(*) as n FROM ai_call_log
+       WHERE created_at >= datetime('now', '-1 day')
+       GROUP BY provider, ok
+       ORDER BY provider`
+    ).all();
+    return json({ stats: results || [] });
+  } catch (e) {
+    return json({ stats: [], note: "ai_call_log table not migrated yet — run schema.sql against your D1 database." });
   }
 }
-Rules: exactly one option per component must be the best/correct one matching the model letter's register (${formal ? "formal" : "informal"}) and content; the other 3 must be plausible-but-wrong (wrong register, missing info, or off-topic). Every option is a full sentence pupils would paste into their letter. Only output the JSON, nothing else.`;
 
-  const text = await callAI(env, prompt, 1800);
-  const obj = parseAiJson(text);
-  if (!obj || !obj.components || !obj.answerKey) return null;
-  return obj;
+/**
+ * Build the full playable case structure using several SMALL, focused AI
+ * calls instead of one large ~1800-token request for the entire nested
+ * JSON. 8B-class models are reliable at "here's one small thing, return
+ * one small JSON object" but frequently truncate or malform a big
+ * multi-part schema in a single completion — which was silently falling
+ * back to the generic rule-based builder for the WHOLE case even when
+ * the model got 90% of it right.
+ *
+ * Each piece below is requested independently, validated on its own,
+ * and — if that one piece fails or comes back malformed — falls back to
+ * a deterministic template for just that piece, not the entire case.
+ * `aiDetail` reports which pieces actually came from AI vs. fallback,
+ * so the admin UI can show partial-success accurately instead of a
+ * single all-or-nothing flag.
+ */
+async function aiBuildCase(env, body, formal) {
+  const keyInfoCapped = body.keyInfo.slice(0, 4);
+
+  const [taskChunks, stimulusExtra, ownContentKeywords, purposeSet, fillerSet, keyInfoDistractorSets] = await Promise.all([
+    aiTaskChunks(env, body.taskText),
+    aiStimulusDistractors(env, body.keyInfo, body.taskText),
+    aiOwnContentKeywords(env, body.ownContentPrompt, body.ownContentIdeas),
+    aiPurposeOption(env, body.taskText, formal),
+    aiFillerOption(env, body.taskText, formal),
+    aiKeyInfoDistractorsBatch(env, keyInfoCapped, body.taskText),
+  ]);
+
+  const aiDetail = {
+    taskChunks: !!taskChunks,
+    stimulus: !!stimulusExtra,
+    ownContentKeywords: !!ownContentKeywords,
+    purpose: !!purposeSet,
+    filler: !!fillerSet,
+    keyInfo: keyInfoDistractorSets.map(Boolean),
+  };
+
+  // ---- assemble the final case, filling any gap with a deterministic template ----
+
+  const finalTaskChunks = taskChunks || fallbackTaskChunks(body.taskText);
+
+  const finalStimulusPoints = [
+    ...body.keyInfo.map((text, i) => ({ id: `s${i + 1}`, text, relevant: true })),
+    ...(stimulusExtra && stimulusExtra.length ? stimulusExtra : ["Extra flavour detail not required in your letter"])
+      .map((text, i) => ({ id: `sx${i + 1}`, text, relevant: false })),
+  ];
+
+  const finalOwnContentKeywords = ownContentKeywords || (body.ownContentIdeas || []).map((s) => [s]);
+
+  const salutation = buildOptionComponent("salutation", "Salutation", fallbackSalutationSet(formal));
+  const signoff = buildOptionComponent("signoff", "Sign-off", fallbackSignoffSet(formal));
+  const purpose = buildOptionComponent("purpose", "Purpose", purposeSet || fallbackPurposeSet(body.taskText));
+  const filler = buildOptionComponent("filler", "Additional context", fillerSet || fallbackFillerSet(formal));
+  const keyinfoComponents = keyInfoCapped.map((text, i) => {
+    const correct = text.endsWith(".") ? text : text + ".";
+    const distractors = keyInfoDistractorSets[i] || fallbackKeyInfoDistractors();
+    return buildOptionComponent(`keyinfo${i + 1}`, `Key information ${i + 1}`, { correct, distractors });
+  });
+
+  const components = [salutation, purpose, ...keyinfoComponents, filler, signoff];
+  const answerKey = {
+    components: Object.fromEntries(components.map((c) => [c.key, c.correctId])),
+    paragraphBreaks: ["purpose", "signoff"],
+  };
+  // strip the internal-only `correctId` helper field before storing
+  const cleanComponents = components.map(({ correctId, ...c }) => c);
+
+  const flatAiFlags = [aiDetail.taskChunks, aiDetail.stimulus, aiDetail.ownContentKeywords, aiDetail.purpose, aiDetail.filler, ...aiDetail.keyInfo];
+  const allAiUsed = flatAiFlags.every(Boolean);
+  const anyAiUsed = flatAiFlags.some(Boolean);
+
+  return {
+    built: {
+      taskChunks: finalTaskChunks,
+      stimulusPoints: finalStimulusPoints,
+      ownContentKeywords: finalOwnContentKeywords,
+      components: cleanComponents,
+      answerKey,
+    },
+    aiDetail,
+    allAiUsed,
+    anyAiUsed,
+  };
 }
 
-/** No-AI fallback: simple template so the case is still playable. */
-function ruleBasedBuildCase(body, formal) {
-  const chunks = body.taskText.split(/(?<=[.,])\s+/).map((text, i) => ({
+/** Shared helper: turn {correct, distractors:[3]} into a shuffled 4-option
+ * component, returning which option id ended up correct. */
+function buildOptionComponent(key, label, set) {
+  const distractors = (set.distractors || []).filter(Boolean).slice(0, 3);
+  while (distractors.length < 3) distractors.push("This does not fit what the letter needs here.");
+  const pool = [set.correct, ...distractors];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const ids = ["a", "b", "c", "d"];
+  const correctIndex = pool.indexOf(set.correct);
+  return {
+    key, label,
+    options: pool.map((text, i) => ({ id: ids[i], text })),
+    correctId: ids[correctIndex === -1 ? 0 : correctIndex],
+  };
+}
+
+// ---- focused AI calls, one small JSON object each ----
+
+async function aiSmallJson(env, prompt, maxTokens = 220) {
+  try {
+    const text = await callAI(env, prompt, maxTokens);
+    return parseAiJson(text);
+  } catch (e) {
+    return null;
+  }
+}
+
+async function aiTaskChunks(env, taskText) {
+  const prompt = `Break this PSLE letter-writing task into short phrases and label each phrase's role.
+Task: "${taskText}"
+Reply with STRICT JSON only: {"chunks":[{"text":"<short phrase, a substring of the task>","type":"purpose|audience|context|other"}]}. Cover the whole task text, breaking at natural commas/clauses. Exactly one phrase should be "purpose" (what pupils must do) and one should be "audience" (who they are writing to); the rest are "context" or "other".`;
+  const obj = await aiSmallJson(env, prompt, 300);
+  if (!obj || !Array.isArray(obj.chunks) || !obj.chunks.length) return null;
+  const valid = obj.chunks.filter((c) => c && typeof c.text === "string" && ["purpose", "audience", "context", "other"].includes(c.type));
+  if (!valid.length) return null;
+  return valid.map((c, i) => ({ id: `c${i + 1}`, text: c.text.trim(), type: c.type }));
+}
+
+async function aiStimulusDistractors(env, keyInfo, taskText) {
+  const prompt = `PSLE letter-writing task: "${taskText}"
+The correct key information pupils must include: ${JSON.stringify(keyInfo)}
+Write exactly 2 short PLAUSIBLE-SOUNDING but IRRELEVANT extra details (things that fit the scene but are NOT required in the letter). Reply with STRICT JSON only: {"distractors":["...","..."]}`;
+  const obj = await aiSmallJson(env, prompt, 150);
+  if (!obj || !Array.isArray(obj.distractors) || !obj.distractors.length) return null;
+  const valid = obj.distractors.filter((s) => typeof s === "string" && s.trim());
+  return valid.length ? valid.slice(0, 2) : null;
+}
+
+async function aiOwnContentKeywords(env, ownContentPrompt, ownContentIdeas) {
+  const ideas = ownContentIdeas && ownContentIdeas.length ? ownContentIdeas : null;
+  const prompt = ideas
+    ? `A pupil will answer this open-ended question in a PSLE letter: "${ownContentPrompt || "(suggest your own idea)"}"
+Acceptable ideas from the teacher: ${JSON.stringify(ideas)}
+For each idea, give 1-2 synonyms/related short phrases so a keyword-matching marker can recognise a pupil's answer even if worded differently. Reply with STRICT JSON only: {"groups":[["idea1","synonym1"],["idea2","synonym2","synonym3"]]} (one group per idea, same order).`
+    : `A pupil will answer this open-ended question in a PSLE letter: "${ownContentPrompt || "(a plausible open-ended point related to the task)"}"
+Suggest 2-3 plausible short answers a pupil might give, each with 1 synonym/related phrase. Reply with STRICT JSON only: {"groups":[["answer1","synonym1"],["answer2","synonym2"]]}`;
+  const obj = await aiSmallJson(env, prompt, 200);
+  if (!obj || !Array.isArray(obj.groups) || !obj.groups.length) return null;
+  const valid = obj.groups.filter((g) => Array.isArray(g) && g.length && g.every((s) => typeof s === "string" && s.trim()));
+  return valid.length ? valid : null;
+}
+
+async function aiPurposeOption(env, taskText, formal) {
+  const prompt = `PSLE letter-writing task: "${taskText}"
+Register: ${formal ? "FORMAL" : "INFORMAL"}.
+Write ONE sentence a pupil could use as the opening "purpose" line of their letter (e.g. "I am writing to..."), matching the task and register. Then write 3 similar-length but WRONG alternative sentences a pupil might mistakenly pick instead (off-topic, wrong register, or vague). Reply with STRICT JSON only: {"correct":"...","distractors":["...","...","..."]}`;
+  const obj = await aiSmallJson(env, prompt, 250);
+  if (!obj || typeof obj.correct !== "string" || !obj.correct.trim() || !Array.isArray(obj.distractors) || obj.distractors.length < 3) return null;
+  return { correct: obj.correct.trim(), distractors: obj.distractors.slice(0, 3).map((s) => String(s).trim()) };
+}
+
+async function aiFillerOption(env, taskText, formal) {
+  const prompt = `PSLE letter-writing task: "${taskText}"
+Register: ${formal ? "FORMAL" : "INFORMAL"}.
+Write ONE short sentence that would naturally round off the middle of this letter (extra supporting context, before the closing), matching the register. Then write 3 similar-length but WRONG alternative sentences a pupil might mistakenly pick instead (off-topic or nonsensical). Reply with STRICT JSON only: {"correct":"...","distractors":["...","...","..."]}`;
+  const obj = await aiSmallJson(env, prompt, 250);
+  if (!obj || typeof obj.correct !== "string" || !obj.correct.trim() || !Array.isArray(obj.distractors) || obj.distractors.length < 3) return null;
+  return { correct: obj.correct.trim(), distractors: obj.distractors.slice(0, 3).map((s) => String(s).trim()) };
+}
+
+/**
+ * One batched call for ALL key-info distractor sets at once, instead of
+ * one call per key-info point — cuts a case build with 4 key-info items
+ * from 4 concurrent AI requests down to 1, reducing the chance of
+ * hitting a free-tier provider's rate/concurrency limit. Each item is
+ * still validated independently: if the model garbles or omits one
+ * item's set, only that item falls back to the deterministic template
+ * (see fallbackKeyInfoDistractors) — the rest of the batch is unaffected.
+ */
+async function aiKeyInfoDistractorsBatch(env, keyInfoList, taskText) {
+  if (!keyInfoList.length) return [];
+  const corrected = keyInfoList.map((k) => (k.endsWith(".") ? k : k + "."));
+  const prompt = `PSLE letter-writing task: "${taskText}"
+Here are the CORRECT sentences for several parts of the letter, numbered in order:
+${corrected.map((c, i) => `${i + 1}. ${c}`).join("\n")}
+For EACH numbered sentence, write exactly 3 similar-length but WRONG alternative sentences a pupil might mistakenly pick instead of it (irrelevant detail, wrong information, or off-topic). Reply with STRICT JSON only, one array of exactly 3 distractors per numbered item, in the same order:
+{"sets":[["...","...","..."], ["...","...","..."]]}`;
+  const obj = await aiSmallJson(env, prompt, 150 + keyInfoList.length * 130);
+  if (!obj || !Array.isArray(obj.sets)) return keyInfoList.map(() => null);
+  return keyInfoList.map((_, i) => {
+    const set = obj.sets[i];
+    if (!Array.isArray(set) || set.length < 3) return null;
+    return set.slice(0, 3).map((s) => String(s).trim());
+  });
+}
+
+// ---- deterministic fallbacks, used per-piece when a single AI call fails ----
+
+function fallbackTaskChunks(taskText) {
+  const chunks = taskText.split(/(?<=[.,])\s+/).map((text, i) => ({
     id: `c${i + 1}`, text: text.trim(), type: i === 0 ? "context" : i === 1 ? "purpose" : "other",
   }));
   const audienceIdx = Math.max(1, chunks.length - 1);
   if (chunks[audienceIdx]) chunks[audienceIdx].type = "audience";
+  return chunks;
+}
 
-  const stimulusPoints = body.keyInfo.map((text, i) => ({ id: `s${i + 1}`, text, relevant: true }));
-  stimulusPoints.push({ id: "sx1", text: "Extra flavour detail not required in your letter", relevant: false });
+function fallbackSalutationSet(formal) {
+  return formal
+    ? { correct: "Dear Sir/Madam,", distractors: ["Hey!,", "Yo,", "Sup,"] }
+    : { correct: "Hi there,", distractors: ["Dear Sir/Madam,", "To whom it may concern,", "Respected Sir,"] };
+}
 
-  const sal = formal ? "Dear Sir/Madam," : "Hi there,";
-  const salOpts = [
-    { id: "a", text: sal },
-    { id: "b", text: formal ? "Hey!," : "Dear Sir/Madam," },
-    { id: "c", text: "To whom it may concern," },
-    { id: "d", text: "Yo," },
-  ];
-  const purposeText = body.taskText.split(".")[0] + ".";
-  const purposeOpts = [
-    { id: "a", text: `I am writing to ${purposeText.toLowerCase().replace(/^you /, "").replace(/^i /, "")}` },
-    { id: "b", text: "I am writing to complain about the weather." },
-    { id: "c", text: "Just wanted to say hi and see what's up." },
-    { id: "d", text: "I am writing regarding an unrelated matter." },
-  ];
-  const keyinfoComponents = body.keyInfo.slice(0, 3).map((k, i) => ({
-    key: `keyinfo${i + 1}`,
-    label: `Key information ${i + 1}`,
-    options: [
-      { id: "a", text: k.endsWith(".") ? k : k + "." },
-      { id: "b", text: "This detail is not related to the task." },
-      { id: "c", text: "I forgot what I wanted to say here." },
-      { id: "d", text: "Something completely different happened instead." },
-    ],
-  }));
-  const signOpts = formal
-    ? [{ id: "a", text: "Yours faithfully," }, { id: "b", text: "Love," }, { id: "c", text: "See ya," }, { id: "d", text: "Bye!" }]
-    : [{ id: "a", text: "Best," }, { id: "b", text: "Yours faithfully," }, { id: "c", text: "Regards from the office," }, { id: "d", text: "Sincerely yours truly," }];
+function fallbackSignoffSet(formal) {
+  return formal
+    ? { correct: "Yours faithfully,", distractors: ["Love,", "See ya,", "Bye!"] }
+    : { correct: "Best,", distractors: ["Yours faithfully,", "Regards from the office,", "Sincerely yours truly,"] };
+}
 
-  const components = [
-    { key: "salutation", label: "Salutation", options: salOpts },
-    { key: "purpose", label: "Purpose", options: purposeOpts },
-    ...keyinfoComponents,
-    { key: "signoff", label: "Sign-off", options: signOpts },
-  ];
-  const answerKey = {
-    components: Object.fromEntries(components.map((c) => [c.key, "a"])),
-    paragraphBreaks: ["purpose", "signoff"],
-  };
+function fallbackPurposeSet(taskText) {
+  const purposeText = taskText.split(".")[0] + ".";
   return {
-    taskChunks: chunks,
-    stimulusPoints,
-    ownContentKeywords: (body.ownContentIdeas || []).map((s) => [s]),
-    components,
-    answerKey,
+    correct: `I am writing to ${purposeText.toLowerCase().replace(/^you /, "").replace(/^i /, "")}`,
+    distractors: [
+      "I am writing to complain about the weather.",
+      "Just wanted to say hi and see what's up.",
+      "I am writing regarding an unrelated matter.",
+    ],
   };
 }
+
+function fallbackFillerSet(formal) {
+  return {
+    correct: formal
+      ? "I hope this additional context is helpful for your consideration."
+      : "Just thought I'd add a bit more info here!",
+    distractors: [
+      "This sentence has nothing to do with the letter.",
+      "I am not sure why I am writing this part.",
+      "Please ignore this line completely.",
+    ],
+  };
+}
+
+function fallbackKeyInfoDistractors() {
+  return [
+    "This detail is not related to the task.",
+    "I forgot what I wanted to say here.",
+    "Something completely different happened instead.",
+  ];
+}
+
+
+// ---------- named exports for local testing (see tests/marking.test.mjs) ----------
+// Wrangler only cares about the default export above; these extra named
+// exports are inert in the Workers runtime and let a plain `node` test
+// script exercise the pure scoring/assembly logic without spinning up a
+// D1 database or an AI provider.
+export {
+  scoreOwnContentByKeyword,
+  jaccardSimilarity,
+  buildOptionComponent,
+  assembleLetter,
+  fallbackTaskChunks,
+  fallbackSalutationSet,
+  fallbackSignoffSet,
+  fallbackPurposeSet,
+  fallbackFillerSet,
+  fallbackKeyInfoDistractors,
+  isFreeOpenRouterModel,
+};
