@@ -1,0 +1,44 @@
+{
+  "title": "The School Clean-Up Day",
+  "formal": false,
+  "taskText": "The school is organising a clean-up day. Write an email to your friend Mei Ling to tell her about the event and suggest one way she can help.",
+  "taskChunks": [
+    { "text": "Tell your friend about the school clean-up day.", "type": "purpose" },
+    { "text": "Your friend Mei Ling is the person you are writing to.", "type": "audience" },
+    { "text": "The school is organising a clean-up day for pupils to help keep the school clean.", "type": "context" }
+  ],
+  "keyInfo": [
+    "The clean-up day will be held on Saturday, 18 October.",
+    "Pupils should meet at the school hall at 8.30 a.m.",
+    "Pupils should wear comfortable clothes and covered shoes.",
+    "The school will provide gloves and rubbish bags.",
+    "The activity will end at 11.30 a.m."
+  ],
+  "distractorStimulusPoints": [
+    "The school canteen will sell pizzas at 8.00 a.m.",
+    "The school football team has a match on Sunday."
+  ],
+  "ownContentPrompt": "Suggest one practical way Mei Ling can help with the clean-up day.",
+  "ownContentIdeas": [
+    "bring extra reusable bags",
+    "help sort the rubbish into recycling bins",
+    "make a poster reminding classmates to come"
+  ],
+  "ownContentKeywords": [["bring", "prepare", "get"], ["sort", "collect", "separate"], ["poster", "remind", "tell"]],
+  "modelLetter": "Hi Mei Ling,\n\nHow are you? I hope you have been well.\n\nI am writing to tell you about our school clean-up day. Our school is organising this event so that pupils can help keep the school clean.\n\nThe clean-up day will be held on Saturday, 18 October. We should meet at the school hall at 8.30 a.m. We should wear comfortable clothes and covered shoes. The school will provide gloves and rubbish bags. The activity will end at 11.30 a.m.\n\nYou could bring extra reusable bags to help collect rubbish.\n\nHope you can join us!\n\nBest regards,\nAlicia",
+  "components": [
+    { "label": "Salutation (Audience)", "options": ["Hi Mei Ling,", "Dear Sir/Madam,", "To whom it may concern,"], "correctIndex": 0 },
+    { "label": "Greeting (informal)", "options": ["How are you? I hope you have been well.", "I hereby wish to inform you of the following.", "Good day to you, respected recipient."], "correctIndex": 0 },
+    { "label": "Purpose", "options": ["I am writing to tell you about our school clean-up day.", "I am writing to complain about the canteen food.", "I am writing to invite you to my birthday party."], "correctIndex": 0 },
+    { "label": "Context", "options": ["Our school is organising this event so that pupils can help keep the school clean.", "Our class is going on a holiday overseas next week.", "The school has cancelled all activities for this term."], "correctIndex": 0 },
+    { "label": "Key information 1", "options": ["The clean-up day will be held on Saturday, 18 October.", "The clean-up day will be held on Sunday, 28 December.", "The clean-up day will be held next Monday afternoon."], "correctIndex": 0 },
+    { "label": "Key information 2", "options": ["We should meet at the school hall at 8.30 a.m.", "We should meet at the classroom at 1.30 p.m.", "We should meet at the library at 5.00 p.m."], "correctIndex": 0 },
+    { "label": "Key information 3", "options": ["We should wear comfortable clothes and covered shoes.", "We should wear our best formal clothes and slippers.", "We should wear swimwear and sandals."], "correctIndex": 0 },
+    { "label": "Key information 4", "options": ["The school will provide gloves and rubbish bags.", "Everyone must bring a new bicycle helmet.", "The school will provide a school uniform for the event."], "correctIndex": 0 },
+    { "label": "Key information 5", "options": ["The activity will end at 11.30 a.m.", "The activity will end at 5.30 p.m.", "The activity will continue until the next morning."], "correctIndex": 0 },
+    { "label": "Own idea", "options": ["Bring extra reusable bags to help collect rubbish.", "Ask everyone to skip the clean-up and play games instead.", "Tell the teacher you cannot help because you do not like Mondays."], "correctIndex": 0 },
+    { "label": "Closing sentence", "options": ["Hope you can join us!", "I await your written response in due course.", "This concludes my formal correspondence."], "correctIndex": 0 },
+    { "label": "Sign-off", "options": ["Best regards,", "Yours faithfully,", "Yours sincerely,"], "correctIndex": 0 },
+    { "label": "Name", "options": ["Alicia", "Alicia Tan", "Ms Tan"], "correctIndex": 0 }
+  ]
+}

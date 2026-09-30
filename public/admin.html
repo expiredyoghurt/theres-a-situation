@@ -12,6 +12,7 @@
     --red:#B23A2E; --green:#3E6B2E; --card:#FBF6E6; --gold:#C99A2E;
   }
   *{box-sizing:border-box;}
+  :focus-visible{outline:3px solid var(--gold);outline-offset:2px;}
   body{margin:0;background:var(--navy);font-family:'Lexend',sans-serif;color:var(--ink);min-height:100vh;}
   h1,h2,h3{font-family:'Special Elite',monospace;font-weight:400;color:var(--navy);}
   .wrap{max-width:880px;margin:0 auto;padding:28px 16px 60px;}
@@ -60,6 +61,23 @@
   .teacher-row{background:var(--card);border:1.5px solid var(--paper-shadow);border-radius:8px;padding:10px 14px;margin-bottom:8px;}
   .teacher-row .classes-input{margin-top:6px;}
   .tag{display:inline-block;background:var(--navy);color:#fff;font-size:10.5px;padding:2px 8px;border-radius:10px;margin-left:8px;}
+
+  /* ---------- mobile (Chromebooks/tablets/phones) ---------- */
+  @media (max-width:480px){
+    .wrap{padding:14px 8px 40px;}
+    .panel{padding:14px 12px;}
+    h1{font-size:18px;}
+    h2{font-size:16px;}
+    .topline{flex-wrap:wrap;gap:8px;}
+    .row{flex-wrap:wrap;}
+    .radio-row{flex-wrap:wrap;gap:10px;}
+    .rubric-grid{grid-template-columns:1fr 70px;gap:6px 8px;}
+    table.heat{font-size:11.5px;}
+    table.heat th, table.heat td{padding:5px 6px;}
+    .imgprev{max-width:100%;}
+    .list-item{flex-wrap:wrap;}
+    .misconception-row,.ai-health-row,.teacher-row{padding:8px 10px;font-size:12.5px;}
+  }
 </style>
 </head>
 <body>
@@ -126,7 +144,7 @@ async function renderDashboard(msg) {
     <div class="topline">
       <div>Signed in as <b>${escapeHtml(me.username)}</b> <span class="tag">${me.role === "admin" ? "Admin" : "Teacher"}</span></div>
       <div class="row">
-        <span class="hint" style="margin:0;">v1.8</span>
+        <span class="hint" style="margin:0;">v1.11</span>
         <button class="btn small" id="logoutBtn">Log out</button>
       </div>
     </div>
@@ -135,6 +153,7 @@ async function renderDashboard(msg) {
     <div class="panel" id="rubricPanel"></div>
     <div class="panel" id="aiHealthPanel"></div>
     <div class="panel" id="studentAccessPanel"></div>
+    <div class="panel" id="tutorialAccessPanel"></div>
     ${me.role === "admin" ? `<div class="panel" id="teachersPanel"></div>` : ""}
     <div class="panel">
       <h1>📁 Situation File Manager</h1>
@@ -153,6 +172,7 @@ async function renderDashboard(msg) {
   renderRubricPanel($("#rubricPanel"));
   renderAiHealthPanel($("#aiHealthPanel"));
   renderStudentAccessPanel($("#studentAccessPanel"));
+  renderTutorialAccessPanel($("#tutorialAccessPanel"));
   if (me.role === "admin") renderTeachersPanel($("#teachersPanel"));
 
   renderForm($("#caseForm"));
@@ -499,6 +519,29 @@ async function renderStudentAccessPanel(panel) {
   }
 }
 
+async function renderTutorialAccessPanel(panel) {
+  panel.innerHTML = `<h1>🧭 Tutorial cases</h1><p class="hint">Loading…</p>`;
+  try {
+    const data = await api("/api/admin/tutorial-access");
+    panel.innerHTML = `
+      <h1>🧭 Tutorial cases</h1>
+      <p class="hint">Switch this off to hide just the two built-in tutorial cases ("The Recycling Fair" and "Sports Day Mix-up") from pupils, once your class has outgrown them. Your own uploaded cases are never affected by this.</p>
+      <label class="radio-row" style="margin-top:12px;"><input type="checkbox" id="tutorialAccessToggle" ${data.enabled ? "checked" : ""}/> Show the built-in tutorial cases to pupils</label>
+      <p id="tutorialAccessMsg" class="hint">${data.enabled ? "Pupils currently see the built-in tutorial cases alongside your published cases." : "Tutorial cases are hidden. Pupils only see your published cases."}</p>
+    `;
+    $("#tutorialAccessToggle", panel).addEventListener("change", async (e) => {
+      const enabled = e.target.checked; e.target.disabled = true;
+      try {
+        const res = await api("/api/admin/tutorial-access", { method:"PUT", headers:{"content-type":"application/json"}, body:JSON.stringify({enabled}) });
+        $("#tutorialAccessMsg", panel).textContent = res.enabled ? "Pupils currently see the built-in tutorial cases alongside your published cases." : "Tutorial cases are hidden. Pupils only see your published cases.";
+      } catch (err) { e.target.checked = !enabled; alert(err.message); }
+      finally { e.target.disabled = false; }
+    });
+  } catch (e) {
+    panel.innerHTML = `<h1>🧭 Tutorial cases</h1><div class="msg error">Could not load: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
 // ---------- case management ----------
 
 function regenerablePartsForCase(c) {
@@ -512,7 +555,7 @@ function regenerablePartsForCase(c) {
 
 function renderCaseList(cases) {
   const el = $("#caseList");
-  if (!cases.length) { el.innerHTML = `<p class="hint">No teacher-uploaded cases yet — the two built-in tutorial cases are always available to pupils.</p>`; return; }
+  if (!cases.length) { el.innerHTML = `<p class="hint">No teacher-uploaded cases yet — the two built-in tutorial cases are available to pupils unless turned off in "Tutorial cases" above.</p>`; return; }
   el.innerHTML = cases.map((c) => `
     <div class="case-row" style="flex-direction:column;align-items:stretch;">
       <div class="row" style="justify-content:space-between;">
@@ -692,10 +735,90 @@ function buildManualPreviewParts(scaffold, formal) {
   });
 }
 
+const MANUAL_COMPONENT_KEYS = ["salutation","greeting","purpose","context","keyinfo1","keyinfo2","keyinfo3","keyinfo4","keyinfo5","ownIdea","closing","signoff","name"];
+
+function manualComponentRowHtml(c, i) {
+  return `<div class="component" style="margin-bottom:12px;"><label>${i+1}. Label</label><input data-mlabel="${c.key}" value="${escapeHtmlAttr(c.label)}"/><div class="row" style="margin-top:5px;"><input type="radio" name="mcorrect-${c.key}" value="a" ${c.correctId==="a"?"checked":""}/><input data-mopt="${c.key}-a" value="${escapeHtmlAttr(c.options[0]?.text||"")}"/></div><div class="row" style="margin-top:5px;"><input type="radio" name="mcorrect-${c.key}" value="b" ${c.correctId==="b"?"checked":""}/><input data-mopt="${c.key}-b" value="${escapeHtmlAttr(c.options[1]?.text||"")}"/></div><div class="row" style="margin-top:5px;"><input type="radio" name="mcorrect-${c.key}" value="c" ${c.correctId==="c"?"checked":""}/><input data-mopt="${c.key}-c" value="${escapeHtmlAttr(c.options[2]?.text||"")}"/></div><p class="hint">Pupils also receive a blank “write your own response” field automatically.</p></div>`;
+}
+
+/** Renders the shared 13-part manual editor + save button into #preview,
+ * and wires the save button to POST to /api/admin/cases/manual. Used both
+ * by "Create full case manually" (parts pre-filled with placeholder
+ * fallback text) and "Import case JSON" (parts pre-filled from the
+ * imported file) so both paths go through the same review-before-save
+ * step and the same validation. `extras` (optional) carries taskChunks /
+ * distractorStimulusPoints that only the JSON-import path supplies. */
+function openManualEditor(form, { parts, getImageData, sourceLabel, extras }) {
+  $("#preview", form).innerHTML = `<h3>Manual case editor${sourceLabel ? " — " + escapeHtml(sourceLabel) : ""}</h3><p class="hint">Edit all 13 parts below. Each part has 3 selectable options; pupils also get a separate blank field for their own response.</p><div id="manualEditor"></div><button type="button" class="btn primary" id="saveManualCase">💾 Save full manual case</button><span id="manualStatus" class="hint" style="margin-left:8px;"></span>`;
+  const editor = $("#manualEditor", form);
+  editor.innerHTML = parts.map(manualComponentRowHtml).join("");
+  $("#saveManualCase", form).addEventListener("click", async () => {
+    const msg = $("#manualStatus", form);
+    const title = $("#f_title", form).value.trim();
+    const taskText = $("#f_task", form).value.trim();
+    const modelLetter = $("#f_model", form).value.trim();
+    const keyInfo = $$("#keyInfoList input", form).map((i) => i.value.trim()).filter(Boolean);
+    const formal = $("input[name=formal]:checked", form).value === "1";
+    const components = MANUAL_COMPONENT_KEYS.map((key) => ({
+      key, label: $("[data-mlabel='"+key+"']", editor).value.trim(),
+      options: ["a","b","c"].map((id) => ({ id, text: $("[data-mopt='"+key+"-"+id+"']", editor).value.trim() })),
+      correctId: $("input[name='mcorrect-"+key+"']:checked", editor)?.value || "a",
+    }));
+    if (!title || !taskText || !modelLetter || keyInfo.length < 5) { msg.textContent = "Please fill in title, question prompt, all 5 key information points, and the model letter first."; return; }
+    if (components.some((c) => !c.label || c.options.some((o) => !o.text))) { msg.textContent = "Please complete every label and option."; return; }
+    msg.textContent = "Saving…";
+    try {
+      await api("/api/admin/cases/manual", { method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify({
+        title, taskText, keyInfo, formal,
+        ownContentPrompt: $("#f_ownprompt", form).value.trim(),
+        ownContentIdeas: $("#f_ownideas", form).value.split("\n").map((s) => s.trim()).filter(Boolean),
+        modelLetter, imageData: getImageData(), components,
+        taskChunks: extras?.taskChunks, distractorStimulusPoints: extras?.distractorStimulusPoints,
+      }) });
+      $("#formMsg", form).innerHTML = `<div class="msg ok">Case created as a <b>draft</b>${sourceLabel ? " from " + escapeHtml(sourceLabel) : ""}. Review it below, then publish it.</div>`;
+      msg.textContent = "Saved.";
+      const data = await api("/api/admin/cases"); renderCaseList(data.cases || []);
+    } catch (e) { msg.textContent = "Failed: " + e.message; }
+  });
+}
+
+/** Converts one imported-JSON component ({label, options:[3 strings],
+ * correctIndex}) into the {key,label,options:[{id,text}],correctId} shape
+ * the editor and the manual-case API expect. Position in the array (not
+ * any field on the object) determines which of the 13 fixed keys it is,
+ * matching the server's FIXED_COMPONENT_KEYS ordering. */
+function importedComponentToEditorPart(raw, i) {
+  const key = MANUAL_COMPONENT_KEYS[i];
+  const opts = Array.isArray(raw?.options) ? raw.options.slice(0, 3) : [];
+  while (opts.length < 3) opts.push("");
+  const idx = [0,1,2].includes(raw?.correctIndex) ? raw.correctIndex : 0;
+  return { key, label: String(raw?.label || "").trim() || key, options: opts.map((text, j) => ({ id: ["a","b","c"][j], text: String(text || "").trim() })), correctId: ["a","b","c"][idx] };
+}
+
+function validateImportedCaseJson(data) {
+  if (!data || typeof data !== "object") return "That file isn't a JSON object.";
+  for (const f of ["title", "taskText", "modelLetter"]) if (!String(data[f] || "").trim()) return `Missing or empty "${f}".`;
+  if (!Array.isArray(data.keyInfo) || data.keyInfo.length !== 5 || data.keyInfo.some((s) => !String(s || "").trim())) return `"keyInfo" must contain exactly 5 non-empty strings.`;
+  if (!Array.isArray(data.components) || data.components.length !== 13) return `"components" must contain exactly 13 parts (found ${Array.isArray(data.components) ? data.components.length : 0}).`;
+  for (let i = 0; i < data.components.length; i++) {
+    const c = data.components[i];
+    if (!Array.isArray(c?.options) || c.options.length !== 3 || c.options.some((o) => !String(o || "").trim())) return `Part ${i + 1} needs exactly 3 non-empty options.`;
+    if (![0,1,2].includes(c?.correctIndex)) return `Part ${i + 1} needs a "correctIndex" of 0, 1 or 2.`;
+  }
+  return null;
+}
+
 function renderForm(form) {
   form.innerHTML = `
     <label>Case title</label>
     <input type="text" id="f_title" placeholder="e.g. The Class Trip Puzzle"/>
+
+    <div class="panel" style="margin:10px 0;padding:10px;border:1px dashed #b99a5b;">
+      <label>📥 Import case JSON <span class="hint">(optional — from an external AI; see AI_CASE_TO_JSON_PROMPT.md)</span></label>
+      <input type="file" accept=".json,application/json" id="f_importjson"/>
+      <p class="hint">Fills in the fields below and opens the 13-part editor for you to review before saving. Attach the stimulus picture separately below.</p>
+      <div id="importJsonMsg"></div>
+    </div>
 
     <label>Stimulus picture</label>
     <input type="file" accept="image/*" id="f_image"/>
@@ -763,25 +886,39 @@ function renderForm(form) {
       $("#formMsg", form).innerHTML = `<div class="msg error">Please fill in title, question prompt, all 5 key information points, and the model letter first.</div>`;
       return;
     }
-    const fallback = {};
     const scaffold = { taskText, task_text: taskText, stimulusPoints: keyInfo.slice(0,5).map((text,i)=>({id:`s${i+1}`,text,relevant:true})), ownContentPrompt: $("#f_ownprompt", form).value.trim(), ownContentKeywords: $("#f_ownideas", form).value.split("\n").map(s=>[s.trim()]).filter(g=>g[0]) };
-    const keys = ["salutation","greeting","purpose","context","keyinfo1","keyinfo2","keyinfo3","keyinfo4","keyinfo5","ownIdea","closing","signoff","name"];
-    const labels = ["Salutation (Audience)", formal ? "Introduction (formal)" : "Greeting (informal)", "Purpose","Context","Key information 1","Key information 2","Key information 3","Key information 4","Key information 5","Own idea","Closing sentence","Sign-off","Name"];
-    const parts = keys.map((key,i)=>{ const set=manualFallbackComponentSet(key,scaffold,formal); fallback[key]={key,label:labels[i],options:["a","b","c"].map((id,j)=>({id,text:[set.correct,...set.distractors][j] || ""})),correctId:"a"}; return fallback[key]; });
-    $("#preview", form).innerHTML = `<h3>Manual case editor</h3><p class="hint">Edit all 13 parts below. Each part has 3 selectable options; pupils also get a separate blank field for their own response.</p><div id="manualEditor"></div><button type="button" class="btn primary" id="saveManualCase">💾 Save full manual case</button><span id="manualStatus" class="hint" style="margin-left:8px;"></span>`;
-    const editor=$("#manualEditor", form);
-    editor.innerHTML=parts.map((c,i)=>`<div class="component" style="margin-bottom:12px;"><label>${i+1}. Label</label><input data-mlabel="${c.key}" value="${escapeHtmlAttr(c.label)}"/><div class="row" style="margin-top:5px;"><input type="radio" name="mcorrect-${c.key}" value="a" checked/><input data-mopt="${c.key}-a" value="${escapeHtmlAttr(c.options[0].text)}"/></div><div class="row" style="margin-top:5px;"><input type="radio" name="mcorrect-${c.key}" value="b"/><input data-mopt="${c.key}-b" value="${escapeHtmlAttr(c.options[1].text)}"/></div><div class="row" style="margin-top:5px;"><input type="radio" name="mcorrect-${c.key}" value="c"/><input data-mopt="${c.key}-c" value="${escapeHtmlAttr(c.options[2].text)}"/></div><p class="hint">Pupils also receive a blank “write your own response” field automatically.</p></div>`).join("");
-    $("#saveManualCase", form).addEventListener("click", async ()=>{
-      const msg=$("#manualStatus",form); const components=keys.map((key)=>({key,label:$("[data-mlabel='"+key+"']",editor).value.trim(),options:["a","b","c"].map(id=>({id,text:$("[data-mopt='"+key+"-"+id+"']",editor).value.trim()})),correctId:$("input[name='mcorrect-"+key+"']:checked",editor)?.value||"a"}));
-      if (components.some(c=>!c.label || c.options.some(o=>!o.text))) { msg.textContent="Please complete every label and option."; return; }
-      msg.textContent="Saving…";
-      try {
-        const res=await api("/api/admin/cases/manual",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({title,taskText,keyInfo,formal,ownContentPrompt:$("#f_ownprompt",form).value.trim(),ownContentIdeas:$("#f_ownideas",form).value.split("\n").map(s=>s.trim()).filter(Boolean),modelLetter,imageData,components})});
-        $("#formMsg",form).innerHTML=`<div class="msg ok">Case created as a <b>draft</b> manually. Review it below, then publish it.</div>`;
-        msg.textContent="Saved.";
-        const data=await api("/api/admin/cases"); renderCaseList(data.cases||[]);
-      } catch(e){msg.textContent="Failed: "+e.message;}
-    });
+    const parts = buildManualPreviewParts(scaffold, formal);
+    openManualEditor(form, { parts, getImageData: () => imageData });
+  });
+
+  $("#f_importjson", form).addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    const msg = $("#importJsonMsg", form);
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let data;
+      try { data = JSON.parse(reader.result); }
+      catch (err) { msg.innerHTML = `<div class="msg error">Could not parse that file as JSON: ${escapeHtml(err.message)}</div>`; return; }
+      const problem = validateImportedCaseJson(data);
+      if (problem) { msg.innerHTML = `<div class="msg error">${escapeHtml(problem)}</div>`; return; }
+      // Fill in the visible fields so they match what's about to be saved.
+      $("#f_title", form).value = data.title;
+      $("#f_task", form).value = data.taskText;
+      $("#f_model", form).value = data.modelLetter;
+      $("#f_ownprompt", form).value = data.ownContentPrompt || "";
+      $("#f_ownideas", form).value = Array.isArray(data.ownContentIdeas) ? data.ownContentIdeas.join("\n") : "";
+      $(`input[name=formal][value="${data.formal ? "1" : "0"}"]`, form).checked = true;
+      const rows = $$("#keyInfoList input", form);
+      data.keyInfo.forEach((v, i) => { if (rows[i]) rows[i].value = v; });
+      const parts = data.components.map(importedComponentToEditorPart);
+      msg.innerHTML = `<div class="msg ok">Loaded "${escapeHtml(data.title)}". Review the 13 parts below, attach a stimulus picture, then save.</div>`;
+      openManualEditor(form, {
+        parts, getImageData: () => imageData, sourceLabel: file.name,
+        extras: { taskChunks: data.taskChunks, distractorStimulusPoints: data.distractorStimulusPoints },
+      });
+    };
+    reader.readAsText(file);
   });
 
   $("#submitCase", form).addEventListener("click", async () => {

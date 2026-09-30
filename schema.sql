@@ -58,11 +58,17 @@ CREATE INDEX IF NOT EXISTS idx_leaderboard_class ON leaderboard(player_class);
 
 -- Global student access switch. Set to 0 to hide ALL cases from pupils,
 -- including the built-in tutorial/sample cases; admin/teacher access remains.
+--
+-- tutorial_cases_enabled is a narrower switch: set to 0 to hide only the
+-- two built-in tutorial/sample cases from pupils (teacher-uploaded
+-- published cases are unaffected). Useful once a class has outgrown the
+-- tutorial cases. Defaults to '1' (visible), matching pre-v1.9 behavior.
 CREATE TABLE IF NOT EXISTS app_settings (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
 INSERT OR IGNORE INTO app_settings (key, value) VALUES ('student_access_enabled', '1');
+INSERT OR IGNORE INTO app_settings (key, value) VALUES ('tutorial_cases_enabled', '1');
 
 -- Accounts: one row per admin/teacher login. Passwords are stored as a
 -- PBKDF2 hash + per-user salt (see hashPassword() in worker/index.js) —

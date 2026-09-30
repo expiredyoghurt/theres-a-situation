@@ -15,7 +15,7 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "boss-situation-db"
-database_id = "3e3bb581-888e-4b6b-b0a8-d330d552847a"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
 
 # Workers AI — the last-resort fallback in the AI provider chain below.
 # Free on every Cloudflare account, no extra setup needed beyond this binding.

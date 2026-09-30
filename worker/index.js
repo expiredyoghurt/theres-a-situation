@@ -1,6 +1,6 @@
 /**
  * Boss! There's a situation! — Worker
- * Version: v1.6
+ * Version: v1.11
  * Serves the API. Static files (public/) are served automatically by the
  * [assets] binding for any request this file doesn't explicitly handle.
  *
@@ -59,7 +59,7 @@
 
 import { DEMO_CASES } from "./demoCases.js";
 
-const APP_VERSION = "v1.8";
+const APP_VERSION = "v1.11";
 const SESSION_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 const AI_TIMEOUT_MS = 9000; // per-provider timeout before falling through the chain
 const REVIEW_COOLDOWN_HOURS = 20; // spaced-review: don't re-suggest a below-threshold case sooner than this
@@ -164,6 +164,12 @@ export default {
       }
       if (path === "/api/admin/student-access" && request.method === "PUT") {
         return await requireAuth(env, request, (session) => setStudentAccessSetting(env, request, session));
+      }
+      if (path === "/api/admin/tutorial-access" && request.method === "GET") {
+        return await requireAuth(env, request, () => getTutorialAccessSetting(env));
+      }
+      if (path === "/api/admin/tutorial-access" && request.method === "PUT") {
+        return await requireAuth(env, request, (session) => setTutorialAccessSetting(env, request, session));
       }
 
       // ---------- teacher accounts (admin only) ----------
@@ -722,12 +728,27 @@ async function ensureSettingsTable(env) {
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`).run();
 }
 
-async function isStudentAccessEnabled(env) {
+/** Shared read for a boolean app_settings flag. Fails open (returns
+ * `defaultValue`) if the settings table isn't migrated yet, matching the
+ * existing student-access behavior — a missing table should never
+ * accidentally lock pupils out. */
+async function isAppSettingEnabled(env, key, defaultValue) {
   try {
     await ensureSettingsTable(env);
-    const row = await env.DB.prepare("SELECT value FROM app_settings WHERE key = 'student_access_enabled'").first();
-    return row ? row.value !== "0" : true;
-  } catch (e) { return true; }
+    const row = await env.DB.prepare("SELECT value FROM app_settings WHERE key = ?").bind(key).first();
+    return row ? row.value !== "0" : defaultValue;
+  } catch (e) { return defaultValue; }
+}
+
+async function setAppSettingEnabled(env, key, enabled) {
+  await ensureSettingsTable(env);
+  await env.DB.prepare(
+    `INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+  ).bind(key, enabled ? "1" : "0").run();
+}
+
+async function isStudentAccessEnabled(env) {
+  return isAppSettingEnabled(env, "student_access_enabled", true);
 }
 
 async function getStudentAccessSetting(env) { return json({ enabled: await isStudentAccessEnabled(env) }); }
@@ -736,19 +757,41 @@ async function setStudentAccessSetting(env, request, session) {
   const body = await request.json().catch(() => ({}));
   if (typeof body.enabled !== "boolean") return json({ error: "enabled must be true or false" }, 400);
   try {
-    await ensureSettingsTable(env);
-    await env.DB.prepare(`INSERT INTO app_settings (key, value) VALUES ('student_access_enabled', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).bind(body.enabled ? "1" : "0").run();
+    await setAppSettingEnabled(env, "student_access_enabled", body.enabled);
     return json({ enabled: body.enabled, changedBy: session.username });
   } catch (e) { return json({ error: "Could not save student access setting. Run schema.sql against the D1 database." }, 500); }
+}
+
+/** Separate, narrower switch from student_access_enabled above: this one
+ * only hides the two built-in tutorial/sample cases (see demoCases.js)
+ * from pupils, while leaving any teacher-uploaded published cases
+ * visible as normal. Useful once a class has outgrown the tutorial
+ * cases and a teacher wants the case list to only show real practice
+ * material. Defaults to enabled (tutorial cases visible), matching
+ * today's behavior for anyone who hasn't touched this setting. */
+async function isTutorialCasesEnabled(env) {
+  return isAppSettingEnabled(env, "tutorial_cases_enabled", true);
+}
+
+async function getTutorialAccessSetting(env) { return json({ enabled: await isTutorialCasesEnabled(env) }); }
+
+async function setTutorialAccessSetting(env, request, session) {
+  const body = await request.json().catch(() => ({}));
+  if (typeof body.enabled !== "boolean") return json({ error: "enabled must be true or false" }, 400);
+  try {
+    await setAppSettingEnabled(env, "tutorial_cases_enabled", body.enabled);
+    return json({ enabled: body.enabled, changedBy: session.username });
+  } catch (e) { return json({ error: "Could not save tutorial access setting. Run schema.sql against the D1 database." }, 500); }
 }
 
 // ---------- case listing / retrieval ----------
 
 async function listCases(env) {
   if (!(await isStudentAccessEnabled(env))) return json({ cases: [], studentAccessEnabled: false });
-  const demoList = DEMO_CASES.map((c) => ({
-    id: c.id, title: c.title, formal: c.formal, imageData: c.imageData, builtin: true,
-  }));
+  const tutorialCasesEnabled = await isTutorialCasesEnabled(env);
+  const demoList = tutorialCasesEnabled
+    ? DEMO_CASES.map((c) => ({ id: c.id, title: c.title, formal: c.formal, imageData: c.imageData, builtin: true }))
+    : [];
   let dbList = [];
   try {
     const { results } = await env.DB.prepare(
@@ -758,11 +801,19 @@ async function listCases(env) {
       id: r.id, title: r.title, formal: !!r.formal, imageData: r.image_data, builtin: false,
     }));
   } catch (e) { /* DB might not be migrated yet — demo cases still work */ }
-  return json({ cases: [...demoList, ...dbList] });
+  return json({ cases: [...demoList, ...dbList], tutorialCasesEnabled });
+}
+
+/** A demo/tutorial case id (see demoCases.js) is only playable while the
+ * tutorial-cases toggle is on. Teacher-uploaded cases are never affected
+ * by this check. */
+async function isBlockedTutorialCase(env, id) {
+  return DEMO_CASES.some((c) => c.id === id) && !(await isTutorialCasesEnabled(env));
 }
 
 async function getCase(env, id) {
   if (!(await isStudentAccessEnabled(env))) return json({ error: "Student access is currently disabled." }, 403);
+  if (await isBlockedTutorialCase(env, id)) return json({ error: "Tutorial cases are currently disabled." }, 403);
   const full = await findFullCase(env, id);
   if (!full) return json({ error: "Case not found" }, 404);
   return json({ case: toPublicCase(full) });
@@ -772,6 +823,7 @@ async function getCase(env, id) {
 
 async function submitCase(env, request, id) {
   if (!(await isStudentAccessEnabled(env))) return json({ error: "Student access is currently disabled." }, 403);
+  if (await isBlockedTutorialCase(env, id)) return json({ error: "Tutorial cases are currently disabled." }, 403);
   const full = await findFullCase(env, id);
   if (!full) return json({ error: "Case not found" }, 404);
   const body = await request.json();
@@ -1225,11 +1277,14 @@ async function getPracticeDue(env, url) {
   const latestByCase = new Map();
   for (const r of rows) if (!latestByCase.has(r.case_id)) latestByCase.set(r.case_id, r);
 
+  const tutorialCasesEnabled = await isTutorialCasesEnabled(env);
   const now = Date.now();
   const cooldownMs = REVIEW_COOLDOWN_HOURS * 60 * 60 * 1000;
   const due = [];
   for (const r of latestByCase.values()) {
     if (r.score >= rubric.masteryThreshold) continue; // already mastered — nothing to resurface
+    // Don't resurface a tutorial case the pupil can no longer open.
+    if (!tutorialCasesEnabled && DEMO_CASES.some((c) => c.id === r.case_id)) continue;
     const lastPlayedMs = new Date(r.created_at.replace(" ", "T") + "Z").getTime();
     if (!Number.isFinite(lastPlayedMs) || now - lastPlayedMs >= cooldownMs) {
       due.push({ caseId: r.case_id, caseTitle: r.case_title, lastScore: r.score, max: r.max_score, lastPlayed: r.created_at });
@@ -1343,7 +1398,16 @@ async function adminCreateManualCase(env, request, session) {
   for (const f of required) {
     if (!body[f] || (Array.isArray(body[f]) && body[f].length === 0)) return json({ error: `Missing field: ${f}` }, 400);
   }
+  if (!Array.isArray(body.keyInfo) || body.keyInfo.length !== 5 || body.keyInfo.some((s) => typeof s !== "string" || !s.trim())) {
+    return json({ error: "keyInfo must contain exactly 5 non-empty strings." }, 400);
+  }
   if (!Array.isArray(body.components) || body.components.length !== FIXED_COMPONENT_KEYS.length) return json({ error: "Manual case must contain exactly 13 parts." }, 400);
+  for (let i = 0; i < body.components.length; i++) {
+    const c = body.components[i];
+    const opts = Array.isArray(c?.options) ? c.options.filter((o) => o && typeof o.text === "string" && o.text.trim()) : [];
+    if (opts.length !== 3) return json({ error: `Part ${i + 1} (${FIXED_COMPONENT_KEYS[i]}) must have exactly 3 non-empty options.` }, 400);
+    if (!["a", "b", "c"].includes(c.correctId)) return json({ error: `Part ${i + 1} (${FIXED_COMPONENT_KEYS[i]}) needs a correctId of "a", "b" or "c".` }, 400);
+  }
   const built = buildManualCaseFromComponents(body, !!body.formal, body.components);
   return json(await saveBuiltCase(env, body, session, built, { aiUsed: false, anyAiUsed: false, aiDetail: {}, usedManualFallback: true, manual: true }));
 }
@@ -1536,7 +1600,18 @@ function buildManualCaseFromComponents(body, formal, components) {
   const clean = components.map((c,i)=>({ key:FIXED_COMPONENT_KEYS[i], label:String(c.label || COMPONENT_LABELS(FIXED_COMPONENT_KEYS[i], formal)).slice(0,120), options:["a","b","c"].map(id=>({id,text:String(c.options?.find(o=>o.id===id)?.text || "").trim().slice(0,500)})) }));
   const answerComponents={};
   components.forEach((c,i)=>answerComponents[FIXED_COMPONENT_KEYS[i]]=["a","b","c"].includes(c.correctId)?c.correctId:"a");
-  return { taskChunks:fallbackTaskChunks(body.taskText), stimulusPoints:(body.keyInfo||[]).slice(0,5).map((text,i)=>({id:`s${i+1}`,text:String(text).trim(),relevant:true})), ownContentKeywords:(body.ownContentIdeas||[]).map(s=>[s]), components:clean, answerKey:{components:answerComponents,paragraphBreaks:["purpose","keyinfo1","closing","signoff"]} };
+  // taskChunks and distractorStimulusPoints are optional extras only the
+  // JSON-import path sends (see AI_CASE_TO_JSON_PROMPT.md); the in-app
+  // manual-entry form never includes them, so both fall back to the
+  // pre-existing behavior when absent, keeping that form unaffected.
+  const taskChunks = Array.isArray(body.taskChunks) && body.taskChunks.length
+    ? body.taskChunks.map((c,i)=>({ id:`t${i+1}`, text:String(c.text||"").trim(), type:["purpose","audience","context","other"].includes(c.type)?c.type:"other" })).filter(c=>c.text)
+    : fallbackTaskChunks(body.taskText);
+  const relevantPoints = (body.keyInfo||[]).slice(0,5).map((text,i)=>({id:`s${i+1}`,text:String(text).trim(),relevant:true}));
+  const distractorPoints = Array.isArray(body.distractorStimulusPoints)
+    ? body.distractorStimulusPoints.filter((s)=>typeof s === "string" && s.trim()).slice(0,2).map((text,i)=>({id:`sx${i+1}`,text:text.trim(),relevant:false}))
+    : [];
+  return { taskChunks, stimulusPoints:[...relevantPoints, ...distractorPoints], ownContentKeywords:(body.ownContentIdeas||[]).map(s=>[s]), components:clean, answerKey:{components:answerComponents,paragraphBreaks:["purpose","keyinfo1","closing","signoff"]} };
 }
 
 async function aiBuildCase(env, body, formal) {
@@ -1735,4 +1810,5 @@ export {
   fallbackFillerSet,
   fallbackKeyInfoDistractors,
   isFreeOpenRouterModel,
+  buildManualCaseFromComponents,
 };
