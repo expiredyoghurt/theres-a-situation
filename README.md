@@ -1,4 +1,6 @@
-# Boss! There's a situation! (v1.8)
+# Boss! There's a situation! (v1.14)
+
+> **What's new:** see `CHANGELOG_v1.14.md` (marking now reads the final letter; exam-style estimate; writing ladder; checklist feedback), `CHANGELOG_v1.13.md` (copy-ready marking prompt for external AI) and `CHANGELOG_v1.12.md` (required points, hints, Confirm + editable letter, AI-failure flags, teacher grade override).
 
 A detective-themed game that gamifies the PSLE English **Situational Writing**
 task (Purpose / Audience / Context, key information, and formal vs. informal
@@ -59,7 +61,8 @@ boss-theres-a-situation/
   wrangler.toml        - Cloudflare Worker config (D1 + Workers AI + static assets)
   schema.sql            - D1 database schema
   worker/
-    index.js            - API routes, scoring logic, admin auth, AI calls
+    index.js            - API routes, admin auth, AI calls, submission handling
+    marking.js          - v1.14 pure marking engine (letter analysis, MOE-style estimate, prompts)
     demoCases.js         - Two built-in tutorial cases (always playable)
   public/
     index.html           - The game (pupil-facing)

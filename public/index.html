@@ -208,6 +208,98 @@
   }
   .letter-preview .placeholder{color:#9c9375;font-family:'Lexend';font-size:14px;}
 
+  /* ---------- v1.12: required points, hint, confirm, editable letter ---------- */
+  .required-box{background:#fff7de;border:2px solid var(--gold);border-radius:8px;padding:12px 14px;margin:0 0 16px;}
+  .required-box h3{margin:0 0 6px;font-size:15px;color:var(--navy);}
+  .required-box .required-text{font-size:14px;line-height:1.55;color:#3d2f17;}
+  .required-box img{display:block;max-width:100%;margin:8px auto 0;border:2px solid var(--navy);border-radius:8px;}
+  .hint-btn{margin:0 0 10px;padding:8px 14px;font-size:13px;}
+  .hint-box{background:#eef6ff;border:1.5px dashed #2b5c8a;border-radius:8px;padding:10px 14px;margin:0 0 12px;font-size:14px;color:#1d3d5c;line-height:1.5;}
+  .confirm-box{background:var(--card);border:2px dashed var(--green);border-radius:8px;padding:14px 16px;margin:16px 0 0;}
+  .confirm-box.pending{border-color:var(--paper-shadow);color:#7a6a45;font-size:13px;}
+  .confirm-box p{margin:0 0 10px;font-size:14px;color:#3d2f17;line-height:1.5;}
+  .confirm-box .btn{background:var(--green);}
+  textarea.letter-edit{
+    background:#fffdf5;border:2px solid var(--green);border-radius:8px;padding:18px 20px;width:100%;
+    font-family:'Caveat',cursive;font-size:19px;line-height:1.55;min-height:220px;color:#1c2a1a;resize:vertical;
+  }
+  .locked-note{font-size:13px;color:#2f5a22;background:var(--green-light);border-radius:6px;padding:8px 12px;margin:0 0 10px;}
+  .ai-warning{background:#fff1d6;border:1.5px solid #c99a2e;border-radius:8px;padding:10px 14px;margin:0 0 14px;font-size:13.5px;color:#5b4321;line-height:1.5;}
+  .ai-flag{font-size:12.5px;color:#8a5a00;margin-top:2px;}
+  .lb-sub{font-size:11.5px;color:#8a5a00;display:block;margin-top:2px;white-space:normal;}
+
+  /* ---------- v2: ladder, home extras, verdict ---------- */
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+  .rank-card{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;justify-content:center;background:var(--card);border:1.5px solid var(--gold);border-radius:8px;padding:10px 14px;margin:0 0 16px;font-size:13.5px;color:#3d2f17;text-align:center;}
+  .rank-badge{font-family:'Special Elite',monospace;background:var(--navy);color:var(--paper);padding:4px 12px;border-radius:20px;font-size:14px;}
+  .focus-card{background:#eef6ff;border:1.5px dashed #2b5c8a;border-radius:8px;padding:12px 16px;margin:0 0 18px;font-size:13.5px;color:#1d3d5c;line-height:1.5;}
+  .focus-card h3{margin:0 0 4px;font-size:15px;color:var(--navy);}
+  .focus-card ul{margin:4px 0 0;padding-left:20px;}
+  .status-chip{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;margin:0 0 6px 6px;border:1.5px solid var(--paper-shadow);background:#fff;color:#3d2f17;}
+  .status-chip.best{border-color:var(--gold);background:#fff7de;}
+  .status-chip.mastered{border-color:var(--green);background:var(--green-light);color:#2f5a22;font-weight:600;}
+  .level-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 0 16px;}
+  .level-card{background:var(--card);border:2px solid var(--paper-shadow);border-radius:8px;padding:10px 12px;font-size:13px;color:#3d2f17;line-height:1.4;}
+  .level-card b{display:block;font-family:'Special Elite',monospace;font-size:14px;color:var(--navy);margin-bottom:2px;}
+  .level-card.on{border-color:var(--green);background:var(--green-light);}
+  .level-card.locked{opacity:.75;cursor:not-allowed;background:var(--paper-dark);}
+  [role="button"].level-card.locked{cursor:not-allowed;}
+  .register-line{background:#fff7de;border:1.5px dashed var(--gold);border-radius:8px;padding:9px 12px;font-size:13.5px;margin:0 0 12px;color:#5b4321;}
+  .case-notes{background:var(--card);border:1.5px solid var(--paper-shadow);border-radius:8px;padding:8px 14px;margin:0 0 12px;font-size:13.5px;color:#3d2f17;}
+  .case-notes summary{cursor:pointer;font-family:'Special Elite',monospace;color:var(--navy);padding:4px 0;}
+  .case-notes h4{margin:10px 0 3px;font-size:13px;color:#5b4321;}
+  .case-notes ul{margin:0;padding-left:20px;line-height:1.5;}
+  .progress-sticky{position:sticky;top:0;z-index:5;background:var(--paper);border:1.5px solid var(--paper-shadow);border-radius:8px;padding:8px 12px;margin:0 0 12px;font-size:13px;color:#3d2f17;box-shadow:0 3px 8px rgba(0,0,0,.15);}
+  .progress-sticky .bar-track{margin-top:5px;}
+  .component{scroll-margin-top:84px;}
+  .starters{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px;}
+  .starter-chip{font-family:'Lexend';font-size:12.5px;padding:5px 11px;border-radius:20px;border:1.5px solid var(--gold);background:#fff7de;color:#3d2f17;cursor:pointer;}
+  .starter-chip:hover{background:#ffefb8;}
+  .starter-tip{font-size:12px;color:#7a6a45;margin:0 0 6px;}
+  .word-count{font-size:13px;color:#5b4321;margin:6px 0 0;}
+  .proof{background:var(--card);border:1.5px dashed var(--paper-shadow);border-radius:8px;padding:10px 14px;margin:14px 0 0;}
+  .proof legend{font-family:'Special Elite',monospace;font-size:14px;color:var(--navy);padding:0 6px;}
+  .proof label{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;margin:6px 0;color:#3d2f17;line-height:1.4;}
+  .proof input{margin-top:3px;accent-color:var(--green);}
+  .missed-banner{background:#fde8e3;border:1.5px solid var(--red);border-radius:8px;padding:10px 14px;margin:0 0 14px;font-size:13.5px;color:#5a1f17;line-height:1.5;display:flex;gap:10px;justify-content:space-between;align-items:flex-start;}
+  .missed-banner ul{margin:4px 0 0;padding-left:18px;}
+  .missed-banner button{background:none;border:1.5px solid var(--red);color:var(--red-dark);border-radius:6px;font-size:12px;padding:4px 8px;cursor:pointer;white-space:nowrap;font-family:'Lexend';}
+  .est-rows{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:6px 0 4px;}
+  .est-pill{background:var(--card);border:1.5px solid var(--paper-shadow);border-radius:8px;padding:6px 12px;font-size:14px;color:#3d2f17;}
+  .est-note{font-size:13px;color:#7a4e12;margin:6px 0 10px;font-style:italic;}
+  .points-meter{max-width:420px;margin:8px auto 0;text-align:left;}
+  .stars-row{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px;padding:0;list-style:none;}
+  .stars-row li{background:var(--card);border:1.5px solid var(--paper-shadow);border-radius:20px;padding:5px 12px;font-size:13px;color:#3d2f17;}
+  .stars-row li.on{border-color:var(--gold);background:#fff7de;font-weight:600;}
+  .v-section{margin:18px 0 0;}
+  .v-section h3{color:var(--navy);font-size:16px;margin:0 0 8px;}
+  .check-list{list-style:none;margin:0;padding:0;}
+  .check-list li{background:var(--card);border:1.5px solid var(--paper-shadow);border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:14px;line-height:1.5;color:#3d2f17;}
+  .check-list li .st{font-weight:600;display:block;font-size:12.5px;}
+  .check-list li.found{border-color:var(--green);}
+  .check-list li.missing{border-color:var(--red);}
+  .check-list li.partial{border-color:var(--gold);}
+  .look-list{margin:0;padding-left:20px;font-size:14px;line-height:1.6;color:#3d2f17;}
+  mark{background:#ffe58a;color:inherit;border-radius:3px;padding:0 2px;}
+  .fix-card{background:#eef6ff;border:2px solid #2b5c8a;border-radius:10px;padding:14px 16px;margin-top:18px;}
+  .fix-card h3{margin:0 0 6px;font-size:16px;color:var(--navy);}
+  .fix-card p{margin:0 0 8px;font-size:14px;color:#1d3d5c;line-height:1.5;}
+  .fix-msg{font-size:14px;margin-top:8px;color:#1d3d5c;min-height:1em;}
+  .fix-msg.ok{color:#2f5a22;font-weight:600;}
+  .nudge{background:var(--green-light);border:1.5px solid var(--green);border-radius:8px;padding:10px 14px;margin-top:18px;font-size:14px;color:#2f5a22;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;}
+  details.model-d{background:var(--card);border:1.5px dashed var(--paper-shadow);border-radius:8px;padding:10px 14px;margin-top:18px;font-size:14px;}
+  details.model-d summary{cursor:pointer;font-family:'Special Elite',monospace;color:var(--navy);}
+  .verdict-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;margin-top:22px;}
+  .lb-tabs{display:flex;gap:6px;margin:0 0 12px;justify-content:center;}
+  .lb-tab{font-family:'Special Elite',monospace;font-size:13px;padding:6px 14px;border-radius:20px;border:1.5px solid #f4e8c8;background:transparent;color:#f4e8c8;cursor:pointer;}
+  .lb-tab[aria-selected="true"]{background:#f4e8c8;color:#3a2a1a;}
+  .lb-hide{display:flex;gap:8px;align-items:center;font-size:12.5px;color:#f4e8c8;margin:0 0 12px;}
+  .lb-hide input{accent-color:var(--gold);}
+  .lb-sub.light{color:#7a6a45;}
+  @media (prefers-reduced-motion: reduce){
+    *{scroll-behavior:auto !important;transition:none !important;animation:none !important;}
+  }
+
   /* ---------- nav buttons ---------- */
   .nav-row{display:flex;justify-content:space-between;margin-top:22px;gap:10px;}
   .btn{
@@ -293,6 +385,11 @@
     .chunk-picker button{font-size:12px;padding:6px 10px;}
     .component{padding:12px;}
     .board{padding:16px;max-height:85vh;}
+    .level-grid{grid-template-columns:1fr;}
+    .verdict-actions{flex-direction:column;}
+    .verdict-actions .btn{width:100%;}
+    .missed-banner{flex-direction:column;}
+    .rank-card{flex-direction:column;}
   }
 </style>
 </head>
@@ -308,18 +405,26 @@
 
 <div class="wrap" id="app"></div>
 
-<div class="footer-link"><a href="/admin.html">Teacher / Admin tools →</a> <span style="color:#5b6a78;">· v1.6</span></div>
+<div class="footer-link"><a href="/admin.html">Teacher / Admin tools →</a> <span style="color:#5b6a78;">· v1.14</span></div>
 
 <script>
+
 const $ = (sel, el=document) => el.querySelector(sel);
 const $$ = (sel, el=document) => Array.from(el.querySelectorAll(sel));
 const app = $("#app");
 
+// localStorage can throw (private mode, blocked, full) — never let it break the game.
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+function lsDel(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
+
+let memDeviceId = "";
 function getOrCreateDeviceId() {
-  let id = localStorage.getItem("detectiveDeviceId");
+  let id = lsGet("detectiveDeviceId");
   if (!id) {
-    id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
-    localStorage.setItem("detectiveDeviceId", id);
+    id = memDeviceId || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+    memDeviceId = id;
+    lsSet("detectiveDeviceId", id);
   }
   return id;
 }
@@ -330,8 +435,8 @@ let state = {
   dueCases: [],
   currentCase: null,
   step: 0,
-  playerName: localStorage.getItem("detectiveName") || "",
-  playerClass: localStorage.getItem("detectiveClass") || "",
+  playerName: lsGet("detectiveName") || "",
+  playerClass: lsGet("detectiveClass") || "",
   deviceId: getOrCreateDeviceId(),
   taskAnswers: {},
   stimulusSelected: new Set(),
@@ -340,11 +445,23 @@ let state = {
   signOffName: "",
   componentResponses: {},
   paragraphBreaks: new Set(),
+  confirmed: false,   // v1.12: letter confirmed in Step 4 => preview becomes editable
+  finalLetter: "",    // v1.12: the (possibly hand-edited) letter text once confirmed (Level 3: the whole letter)
+  hintOpen: false,    // v1.12: Step 3 hint revealed
   result: null,
   studentAccessEnabled: true,
+  level: 1,           // v2: writing ladder level chosen for the current draft (1 Guided, 2 Starters, 3 Independent)
+  profile: null,      // v2: from /api/my-scores
+  config: null,       // v2: from /api/config
+  missedInfo: null,   // v2: "Last time you missed" info for the open case
 };
 
 const STEPS = ["Briefing", "Evidence", "Hunch", "Draft", "Verdict"];
+const LEVELS = [
+  { n: 1, name: "Guided", desc: "Pick one of 3 suggestions for each part, or write your own." },
+  { n: 2, name: "Starters", desc: "Write each part in your own words, helped by sentence starters." },
+  { n: 3, name: "Independent", desc: "Write the whole letter yourself from a blank page." },
+];
 
 async function api(path, opts) {
   const res = await fetch(path, opts);
@@ -364,24 +481,58 @@ function resetCaseState() {
   state.paragraphBreaks = new Set();
   state.signOffName = "";
   state.componentResponses = {};
+  state.confirmed = false;
+  state.finalLetter = "";
+  state.hintOpen = false;
   state.result = null;
+  state.missedInfo = null;
+  // state.level is deliberately kept so a pupil stays on the level they chose.
+}
+
+function identityQs() {
+  return "?name=" + encodeURIComponent(state.playerName) + "&playerClass=" + encodeURIComponent(state.playerClass || "") + "&deviceId=" + encodeURIComponent(state.deviceId || "");
+}
+
+/** Highest level this pupil may use. Any failure => Level 1 only. */
+function unlockedLevel() {
+  let n = 1;
+  const p = state.profile && Number(state.profile.unlockedLevel);
+  if (p >= 1 && p <= 3) n = Math.max(n, Math.floor(p));
+  if (state.config && state.config.allLevelsUnlocked) n = 3;
+  return n;
+}
+
+async function fetchMeta() {
+  const jobs = [
+    api("/api/config").then((d) => { state.config = d || null; }).catch(() => {}),
+  ];
+  if (state.playerName) {
+    jobs.push(api("/api/my-scores" + identityQs()).then((d) => { state.profile = (d && d.profile) || null; }).catch(() => {}));
+  }
+  await Promise.all(jobs);
 }
 
 async function loadHome() {
   if (!state.playerName) { state.screen = "launch"; render(); return; }
   state.screen = "home";
   render();
-  try {
-    const data = await api("/api/cases");
-    state.cases = data.cases || [];
-    state.studentAccessEnabled = data.studentAccessEnabled !== false;
-  } catch (e) { state.cases = []; }
-  try {
-    const qs = "?name=" + encodeURIComponent(state.playerName) + "&playerClass=" + encodeURIComponent(state.playerClass || "") + "&deviceId=" + encodeURIComponent(state.deviceId || "");
-    const dueData = await api("/api/practice-due" + qs);
-    state.dueCases = dueData.due || [];
-  } catch (e) { state.dueCases = []; }
-  render();
+  await Promise.all([
+    (async () => {
+      try {
+        const data = await api("/api/cases");
+        state.cases = data.cases || [];
+        state.studentAccessEnabled = data.studentAccessEnabled !== false;
+      } catch (e) { state.cases = []; }
+    })(),
+    (async () => {
+      try {
+        const dueData = await api("/api/practice-due" + identityQs());
+        state.dueCases = dueData.due || [];
+      } catch (e) { state.dueCases = []; }
+    })(),
+    fetchMeta(),
+  ]);
+  if (state.screen === "home") render();
 }
 
 function render() {
@@ -407,9 +558,9 @@ function renderLaunch() {
       <div class="agency-title" style="font-size:24px;">Detective, identify yourself</div>
       <p class="agency-sub">Enter your name and class like <b>John@5IG</b>, then head into the case files.</p>
       <div class="name-row" style="flex-direction:column;align-items:stretch;">
-        <input id="launchInput" placeholder="e.g. John@5IG" value="${escapeHtml(prefill)}" maxlength="60" style="width:100%;text-align:center;"/>
+        <input id="launchInput" aria-label="Your name and class, like John@5IG" placeholder="e.g. John@5IG" value="${escapeHtml(prefill)}" maxlength="60" style="width:100%;text-align:center;"/>
       </div>
-      <div id="launchMsg" class="hint" style="text-align:center;margin-bottom:10px;"></div>
+      <div id="launchMsg" class="hint" role="status" style="text-align:center;margin-bottom:10px;"></div>
       <button class="btn primary" id="launchGo" style="width:100%;">Enter the Agency →</button>
     </div>
   `;
@@ -418,10 +569,11 @@ function renderLaunch() {
   const go = () => {
     const { name, cls } = parseIdentity(input.value);
     if (!name) { msg.textContent = "Please enter at least your name (e.g. John@5IG)."; return; }
+    if (name !== state.playerName || cls !== state.playerClass) { state.profile = null; }
     state.playerName = name;
     state.playerClass = cls;
-    localStorage.setItem("detectiveName", name);
-    localStorage.setItem("detectiveClass", cls);
+    lsSet("detectiveName", name);
+    lsSet("detectiveClass", cls);
     loadHome();
   };
   $("#launchGo").addEventListener("click", go);
@@ -429,8 +581,42 @@ function renderLaunch() {
   input.focus();
 }
 
+function caseStatus(caseId) {
+  const bests = state.profile && state.profile.bests;
+  const b = bests && bests[caseId];
+  if (!b) return { key: "new", text: "New", icon: "🆕" };
+  if (b.mastered) return { key: "mastered", text: "Mastered", icon: "✔" };
+  const pct = b.max ? Math.round((Number(b.best) / Number(b.max)) * 100) : 0;
+  return { key: "best", text: "Best " + pct + "%", icon: "🎯" };
+}
+
 function renderHome() {
   const due = state.dueCases || [];
+  const prof = state.profile;
+  const rank = prof && prof.rank;
+  const weak = (prof && Array.isArray(prof.weaknesses) ? prof.weaknesses : []).filter((w) => w && w.label).slice(0, 3);
+  let rankHtml = "";
+  if (rank && rank.title) {
+    let nextTxt = "";
+    if (rank.next && rank.next.title) {
+      const n = Number(rank.next.casesNeeded) || 0;
+      nextTxt = `<span>${n} more case${n === 1 ? "" : "s"} to ${escapeHtml(rank.next.title)}</span>`;
+    } else {
+      nextTxt = `<span>Top rank reached — well done!</span>`;
+    }
+    const mc = Number(prof.masteredCount);
+    rankHtml = `
+      <div class="rank-card" aria-label="Your detective rank">
+        <span class="rank-badge">🔎 ${escapeHtml(rank.title)}</span>
+        ${nextTxt}
+        ${Number.isFinite(mc) ? `<span>${mc} case${mc === 1 ? "" : "s"} mastered</span>` : ""}
+      </div>`;
+  }
+  const focusHtml = weak.length ? `
+    <div class="focus-card">
+      <h3>🎯 Your next focus</h3>
+      <ul>${weak.map((w) => `<li>You often: ${escapeHtml(w.label)}</li>`).join("")}</ul>
+    </div>` : "";
   app.innerHTML = `
     <div class="panel">
       <div class="stamp">INBOX</div>
@@ -440,15 +626,17 @@ function renderHome() {
         Detective <b>${escapeHtml(state.playerName)}</b>${state.playerClass ? ` <span class="hint">(Class ${escapeHtml(state.playerClass)})</span>` : ""}
         &nbsp;·&nbsp;<a href="#" id="switchDetective" style="color:#8a6a2e;">Not you? Switch detective</a>
       </div>
+      ${rankHtml}
+      ${focusHtml}
       ${due.length ? `
         <div class="due-panel">
           <div class="due-title">📌 Cases due for another look</div>
           <p class="hint" style="margin:2px 0 10px;">You haven't quite cracked these yet — worth a retry.</p>
           <div class="due-list">
             ${due.map((d) => `
-              <div class="due-item" data-id="${d.caseId}" role="button" tabindex="0" aria-label="Retry case: ${escapeHtml(d.caseTitle)}. Last try: ${d.lastScore} out of ${d.max}.">
+              <div class="due-item" data-id="${escapeHtml(d.caseId)}" role="button" tabindex="0" aria-label="Retry case: ${escapeHtml(d.caseTitle)}. Last try: ${escapeHtml(d.lastScore)} out of ${escapeHtml(d.max)}.">
                 <span>${escapeHtml(d.caseTitle)}</span>
-                <span class="due-score">Last try: ${d.lastScore}/${d.max}</span>
+                <span class="due-score">Last try: ${escapeHtml(d.lastScore)}/${escapeHtml(d.max)}</span>
               </div>
             `).join("")}
           </div>
@@ -477,11 +665,12 @@ function renderHome() {
 }
 
 function caseCardHtml(c) {
+  const st = caseStatus(c.id);
   return `
-    <div class="case-card" data-id="${c.id}" role="button" tabindex="0" aria-label="Open case: ${escapeHtml(c.title)} (${c.formal ? "formal" : "informal"} writing).">
-      <img src="${c.imageData}" alt="" />
+    <div class="case-card" data-id="${escapeHtml(c.id)}" role="button" tabindex="0" aria-label="Open case: ${escapeHtml(c.title)} (${c.formal ? "formal" : "informal"} writing). Status: ${escapeHtml(st.text)}.">
+      <img src="${escapeHtml(c.imageData)}" alt="" />
       <div class="body">
-        <span class="tag ${c.formal ? "" : "informal"}">${c.formal ? "Formal" : "Informal"}</span>
+        <span class="tag ${c.formal ? "" : "informal"}">${c.formal ? "Formal" : "Informal"}</span><span class="status-chip ${st.key}">${st.icon} ${escapeHtml(st.text)}</span>
         <h3>${escapeHtml(c.title)}</h3>
       </div>
     </div>
@@ -497,31 +686,38 @@ function draftStorageKey(caseId) {
  * half-built letter is a bad experience. Cleared on successful submit. */
 function persistProgress() {
   if (!state.currentCase) return;
-  try {
-    localStorage.setItem(draftStorageKey(state.currentCase.id), JSON.stringify({
-      step: state.step,
-      taskAnswers: state.taskAnswers,
-      stimulusSelected: Array.from(state.stimulusSelected),
-      ownContent: state.ownContent,
-      componentChoices: state.componentChoices,
-      paragraphBreaks: Array.from(state.paragraphBreaks),
-      signOffName: state.signOffName,
-    }));
-  } catch (e) { /* localStorage full/unavailable — losing draft resilience isn't fatal */ }
+  lsSet(draftStorageKey(state.currentCase.id), JSON.stringify({
+    step: state.step,
+    taskAnswers: state.taskAnswers,
+    stimulusSelected: Array.from(state.stimulusSelected),
+    ownContent: state.ownContent,
+    componentChoices: state.componentChoices,
+    componentResponses: state.componentResponses,
+    paragraphBreaks: Array.from(state.paragraphBreaks),
+    signOffName: state.signOffName,
+    confirmed: state.confirmed,
+    finalLetter: state.finalLetter,
+    level: state.level,
+  }));
 }
 
 function restoreProgress(caseId) {
   try {
-    const raw = localStorage.getItem(draftStorageKey(caseId));
+    const raw = lsGet(draftStorageKey(caseId));
     if (!raw) return false;
     const saved = JSON.parse(raw);
-    state.step = saved.step || 0;
+    state.step = Math.min(saved.step || 0, 3);
     state.taskAnswers = saved.taskAnswers || {};
     state.stimulusSelected = new Set(saved.stimulusSelected || []);
     state.ownContent = saved.ownContent || "";
     state.componentChoices = saved.componentChoices || {};
+    state.componentResponses = saved.componentResponses || {};
     state.paragraphBreaks = new Set(saved.paragraphBreaks || []);
     state.signOffName = saved.signOffName || "";
+    state.confirmed = !!saved.confirmed;
+    state.finalLetter = saved.finalLetter || "";
+    const lv = Number(saved.level);
+    state.level = (lv >= 1 && lv <= 3) ? Math.floor(lv) : 1;
     return true;
   } catch (e) {
     return false;
@@ -529,10 +725,56 @@ function restoreProgress(caseId) {
 }
 
 function clearProgress(caseId) {
-  try { localStorage.removeItem(draftStorageKey(caseId)); } catch (e) { /* ignore */ }
+  lsDel(draftStorageKey(caseId));
 }
 
-async function openCase(id) {
+// ---- "Last time you missed" (retry help), kept per case in localStorage ----
+function missedKey(caseId) { return "bossMissed:" + caseId; }
+function loadMissed(caseId) {
+  try {
+    const raw = lsGet(missedKey(caseId));
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    const missed = Array.isArray(d.missed) ? d.missed.filter((x) => typeof x === "string" && x) : [];
+    const flags = Array.isArray(d.flags) ? d.flags.filter((f) => f && f.label) : [];
+    return (missed.length || flags.length) ? { missed, flags } : null;
+  } catch (e) { return null; }
+}
+function saveMissed(caseId, r) {
+  const points = (r.checklist && Array.isArray(r.checklist.points)) ? r.checklist.points : [];
+  const missed = points.filter((p) => p && p.status !== "found" && p.text).map((p) => String(p.text));
+  const flags = (Array.isArray(r.flags) ? r.flags : []).filter((f) => f && f.label).map((f) => ({ code: f.code, label: f.label }));
+  if (!missed.length && !flags.length) { lsDel(missedKey(caseId)); return; }
+  lsSet(missedKey(caseId), JSON.stringify({ missed, flags, ts: Date.now() }));
+}
+function missedBannerHtml() {
+  const m = state.missedInfo;
+  if (!m) return "";
+  return `
+    <div class="missed-banner" id="missedBanner" role="note">
+      <div><b>Last time you missed:</b>
+        <ul>
+          ${m.missed.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}
+          ${m.flags.map((f) => `<li>${escapeHtml(f.label)}</li>`).join("")}
+        </ul>
+      </div>
+      <button type="button" id="missedDismiss" aria-label="Dismiss the reminder about what you missed last time">✕ Dismiss</button>
+    </div>`;
+}
+function bindMissedBanner(body) {
+  const btn = $("#missedDismiss", body);
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const caseId = state.currentCase && state.currentCase.id;
+    state.missedInfo = null;
+    if (caseId) lsDel(missedKey(caseId));
+    const el = $("#missedBanner", body);
+    if (el) el.remove();
+  });
+}
+
+async function openCase(id, opts) {
+  opts = opts || {};
   resetCaseState();
   state.screen = "case";
   state.currentCase = null;
@@ -540,24 +782,31 @@ async function openCase(id) {
   try {
     const data = await api("/api/cases/" + id);
     // Shuffle each MCQ component's option DISPLAY order once per case
-    // load. The correct answer is still tracked server-side by option
-    // id, not position, so this doesn't change scoring — it just stops
-    // "the answer is always C" from becoming a shortcut once it spreads
-    // around a class, since the order is different every time someone
-    // opens the case.
+    // load. Option ids are opaque strings, so position gives nothing away.
     if (data.case && Array.isArray(data.case.components)) {
       data.case.components = data.case.components.map((comp) => ({
         ...comp,
-        options: shuffleArray(comp.options.slice()),
+        options: shuffleArray((comp.options || []).slice()),
       }));
     }
+    // Evidence tiles arrive with the correct ones first; shuffle them so
+    // position gives nothing away (selection is tracked by id, not position).
+    if (data.case && Array.isArray(data.case.stimulusPoints)) {
+      data.case.stimulusPoints = shuffleArray(data.case.stimulusPoints.slice());
+    }
     state.currentCase = data.case;
-    restoreProgress(id); // no-op if there's nothing saved for this case
+    const restored = restoreProgress(id); // no-op if there's nothing saved for this case
+    if (!restored || opts.level) {
+      const want = opts.level || state.level || 1;
+      state.level = Math.max(1, Math.min(want, unlockedLevel()));
+    }
+    state.missedInfo = loadMissed(id);
   } catch (e) {
     alert("Could not open that case: " + e.message);
     state.screen = "home";
   }
   render();
+  window.scrollTo(0, 0);
 }
 
 function shuffleArray(arr) {
@@ -575,7 +824,7 @@ function renderCase() {
     let cls = "tab";
     if (i === state.step) cls += " active";
     if (i < state.step) cls += " done";
-    return `<div class="${cls}">${i+1}. ${label}</div>`;
+    return `<div class="${cls}"${i === state.step ? ' aria-current="step"' : ""}>${i+1}. ${label}</div>`;
   }).join("");
 
   app.innerHTML = `
@@ -598,11 +847,11 @@ function navRow(container, { backLabel="← Back", nextLabel="Next →", onBack,
   row.className = "nav-row";
   row.innerHTML = `
     <button class="btn secondary" id="navBack">${backLabel}</button>
-    <button class="btn primary" id="navNext" ${nextDisabled ? "disabled" : ""}>${nextLabel}</button>
+    ${nextLabel === null ? "" : `<button class="btn primary" id="navNext" ${nextDisabled ? "disabled" : ""}>${nextLabel}</button>`}
   `;
   container.appendChild(row);
   $("#navBack", row).addEventListener("click", onBack);
-  $("#navNext", row).addEventListener("click", onNext);
+  if (nextLabel !== null) $("#navNext", row).addEventListener("click", onNext);
 }
 
 // ---- Step 0: Briefing (task purpose/audience/context) ----
@@ -628,7 +877,7 @@ function renderBriefing(body, c) {
   taskTextEl.innerHTML = c.taskChunks.map((chunk) => {
     const tag = state.taskAnswers[chunk.id];
     const label = tag ? `Tagged as ${TAG_NAME[tag]}: ${chunk.text}. Activate to change the tag.` : `Untagged: ${chunk.text}. Activate to tag it.`;
-    return `<span class="chunk ${tag ? "tag-" + tag : ""}" data-id="${chunk.id}" role="button" tabindex="0" aria-label="${escapeHtml(label)}">${escapeHtml(chunk.text)}${tag ? `<span class="tag-icon" aria-hidden="true">${TAG_ICON[tag]}</span>` : ""}</span> `;
+    return `<span class="chunk ${tag ? "tag-" + tag : ""}" data-id="${escapeHtml(chunk.id)}" role="button" tabindex="0" aria-label="${escapeHtml(label)}">${escapeHtml(chunk.text)}${tag ? `<span class="tag-icon" aria-hidden="true">${TAG_ICON[tag]}</span>` : ""}</span> `;
   }).join("");
 
   const pickChunk = (el) => {
@@ -665,7 +914,7 @@ function renderBriefing(body, c) {
   const tagged = Object.keys(state.taskAnswers).length;
   navRow(body, {
     backLabel: "← Case Files", nextLabel: "Next: Evidence →",
-    nextDisabled: tagged < 3,
+    nextDisabled: tagged < Math.min(3, c.taskChunks.length),
     onBack: () => { state.screen = "home"; render(); },
     onNext: () => { state.step = 1; persistProgress(); render(); },
   });
@@ -675,14 +924,22 @@ function renderBriefing(body, c) {
 function renderEvidence(body, c) {
   body.innerHTML = `
     <h2 class="step-title">🧩 Step 2 — The Evidence Board</h2>
-    <p class="step-instr">Study the graphic clue, then pin the pieces of information you think belong in your letter. Watch out — not everything is relevant!</p>
-    <img src="${c.imageData}" alt="Stimulus" style="width:100%;max-width:480px;display:block;margin:0 auto 16px;border:2px solid var(--navy);border-radius:8px;"/>
+    ${missedBannerHtml()}
+    <p class="step-instr">Study the clues, then pin the pieces of information you think belong in your letter. Watch out — not everything is relevant!</p>
+    ${c.imageData ? `<img src="${c.imageData}" alt="Stimulus" style="width:100%;max-width:480px;display:block;margin:0 auto 16px;border:2px solid var(--navy);border-radius:8px;"/>` : ""}
+    ${(c.requiredText || c.requiredImageData) ? `
+      <div class="required-box" id="requiredBox">
+        <h3>📋 Required content points</h3>
+        ${c.requiredText ? `<div class="required-text">${escapeHtml(c.requiredText).replace(/\n/g, "<br>")}</div>` : ""}
+        ${c.requiredImageData ? `<img src="${c.requiredImageData}" alt="Required content points (picture)"/>` : ""}
+      </div>` : ""}
     <div class="evidence-grid" id="evGrid"></div>
   `;
+  bindMissedBanner(body);
   const grid = $("#evGrid", body);
   grid.innerHTML = c.stimulusPoints.map((p) => {
     const selected = state.stimulusSelected.has(p.id);
-    return `<div class="evidence-card ${selected ? "selected" : ""}" data-id="${p.id}" role="button" tabindex="0" aria-pressed="${selected}" aria-label="${selected ? "Pinned: " : "Not pinned: "}${escapeHtml(p.text)}. Activate to ${selected ? "unpin" : "pin"} this clue.">${escapeHtml(p.text)}</div>`;
+    return `<div class="evidence-card ${selected ? "selected" : ""}" data-id="${escapeHtml(p.id)}" role="button" tabindex="0" aria-pressed="${selected}" aria-label="${selected ? "Pinned: " : "Not pinned: "}${escapeHtml(p.text)}. Activate to ${selected ? "unpin" : "pin"} this clue.">${escapeHtml(p.text)}</div>`;
   }).join("");
   const toggleEvidence = (el) => {
     const id = el.dataset.id;
@@ -709,12 +966,23 @@ function renderEvidence(body, c) {
 
 // ---- Step 2: Own content / hunch ----
 function renderHunch(body, c) {
+  const hint = (c.hunchHint || "").trim(); // no teacher hint => no Hint button at all
   body.innerHTML = `
     <h2 class="step-title">💡 Step 3 — Your Hunch</h2>
     <p class="step-instr">Every good detective adds their own insight. This idea isn't given anywhere in the case file — it's yours to suggest.</p>
     <div class="prompt-box">${escapeHtml(c.ownContentPrompt || "Suggest a plausible idea of your own for this scenario.")}</div>
+    ${hint ? `
+      <button type="button" class="btn secondary hint-btn" id="hintBtn" aria-expanded="${state.hintOpen}" aria-controls="hintBox">💡 ${state.hintOpen ? "Hide hint" : "Hint"}</button>
+      <div class="hint-box" id="hintBox" role="note" ${state.hintOpen ? "" : "hidden"}><b>Hint:</b> ${escapeHtml(hint)}</div>` : ""}
     <textarea id="ownContentInput" placeholder="Type your idea here…">${escapeHtml(state.ownContent)}</textarea>
   `;
+  const hintBtn = $("#hintBtn", body);
+  if (hintBtn) hintBtn.addEventListener("click", () => {
+    state.hintOpen = !state.hintOpen;
+    $("#hintBox", body).hidden = !state.hintOpen;
+    hintBtn.setAttribute("aria-expanded", String(state.hintOpen));
+    hintBtn.textContent = "💡 " + (state.hintOpen ? "Hide hint" : "Hint");
+  });
   $("#ownContentInput", body).addEventListener("input", (e) => { state.ownContent = e.target.value; persistProgress(); });
   navRow(body, {
     nextLabel: "Next: Draft →",
@@ -724,59 +992,237 @@ function renderHunch(body, c) {
   });
 }
 
-// ---- Step 3: Draft the letter (MCQ builder) ----
+// ---- Step 4: Draft the letter (writing ladder) ----
+const STARTERS = {
+  salutation: ["Dear Mr/Ms …,", "Dear Sir/Madam,", "Hi …,"],
+  greeting: ["I hope you are well.", "I hope this message finds you well."],
+  purpose: ["I am writing to…", "I am writing because…"],
+  context: ["Recently, …", "As you may know, …"],
+  keyinfo: ["I understand that…", "Please note that…", "The details are as follows: …"],
+  ownIdea: ["Since I cannot…, I would like to…", "To help, I could…"],
+  closing: ["Thank you for…", "I look forward to…"],
+  signoff: ["Yours sincerely,", "Yours faithfully,", "Best wishes,"],
+};
+
+function startersFor(comp) {
+  const k = String(comp.key || "");
+  if (k === "name") return [state.playerName || "Your name"];
+  if (STARTERS[k]) return STARTERS[k];
+  if (/^keyinfo/i.test(k)) return STARTERS.keyinfo;
+  return ["I would like to…", "Please note that…"];
+}
+
+function prefersReducedMotion() {
+  try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; }
+}
+
+function countWords(t) {
+  return (t || "").trim().split(/\s+/).filter(Boolean).length;
+}
+
+function levelChooserHtml() {
+  const unlocked = unlockedLevel();
+  return `
+    <div class="level-grid" role="group" aria-label="Choose your writing level">
+      ${LEVELS.map((L) => {
+        const locked = L.n > unlocked;
+        const on = L.n === state.level;
+        return `<div class="level-card ${on ? "on" : ""} ${locked ? "locked" : ""}" data-level="${L.n}" role="button" tabindex="0" aria-pressed="${on}" ${locked ? 'aria-disabled="true"' : ""}>
+          <b>Level ${L.n} — ${L.name}${locked ? " 🔒" : ""}</b>
+          ${locked ? `Locked: master a case at Level ${L.n - 1} to unlock.` : escapeHtml(L.desc)}
+        </div>`;
+      }).join("")}
+    </div>`;
+}
+
+function hasDraftContent(c) {
+  return c.components.some((comp) => state.componentChoices[comp.key]) || !!state.finalLetter.trim();
+}
+
+function bindLevelChooser(body, c) {
+  $$(".level-card", body).forEach((el) => {
+    const choose = () => {
+      const n = Number(el.dataset.level);
+      if (n > unlockedLevel() || n === state.level) return;
+      if (hasDraftContent(c) && !confirm("Changing level starts your letter again. Continue?")) return;
+      state.level = n;
+      state.componentChoices = {};
+      state.componentResponses = {};
+      state.paragraphBreaks = new Set();
+      state.finalLetter = "";
+      state.confirmed = false;
+      persistProgress();
+      renderDraft(body, c);
+      const again = $(`.level-card[data-level="${n}"]`, body);
+      if (again) again.focus();
+    };
+    el.addEventListener("click", choose);
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") { e.preventDefault(); choose(); }
+    });
+  });
+}
+
+function registerLineHtml(c) {
+  return `<div class="register-line">${c.formal
+    ? "📝 This is a <b>formal</b> letter: use polite, complete sentences. No slang and no short forms like “don't”."
+    : "📝 This is an <b>informal</b> letter: a friendly, chatty tone is fine, but still write full sentences."}</div>`;
+}
+
+const TAG_NAME = { purpose: "Purpose", audience: "Audience", context: "Context", other: "Not needed" };
+
+function caseNotesHtml(c) {
+  const tagged = (c.taskChunks || []).filter((ch) => state.taskAnswers[ch.id]);
+  const pinned = (c.stimulusPoints || []).filter((p) => state.stimulusSelected.has(p.id));
+  const hunch = (state.ownContent || "").trim();
+  return `
+    <details class="case-notes">
+      <summary>📓 My case notes</summary>
+      <h4>Step 1 — my tags</h4>
+      ${tagged.length ? `<ul>${tagged.map((ch) => `<li>${escapeHtml(TAG_NAME[state.taskAnswers[ch.id]] || state.taskAnswers[ch.id])}: ${escapeHtml(ch.text)}</li>`).join("")}</ul>` : `<p class="field-note">No tags yet.</p>`}
+      <h4>Step 2 — evidence I pinned</h4>
+      ${pinned.length ? `<ul>${pinned.map((p) => `<li>${escapeHtml(p.text)}</li>`).join("")}</ul>` : `<p class="field-note">Nothing pinned.</p>`}
+      <h4>Step 3 — my hunch</h4>
+      ${hunch ? `<p style="margin:0;white-space:pre-wrap;">${escapeHtml(hunch)}</p>` : `<p class="field-note">No hunch written.</p>`}
+    </details>`;
+}
+
+function proofreadHtml() {
+  const items = [
+    "Capital letters at the start of sentences",
+    "Full stops at the ends of sentences",
+    "Names, dates and times copied correctly",
+    "Salutation and sign-off match (Dear Sir/Madam → Yours faithfully; Dear Mr/Ms Name → Yours sincerely)",
+    "One paragraph for each main idea",
+  ];
+  return `
+    <fieldset class="proof">
+      <legend>🔍 Proofread checklist</legend>
+      <p class="field-note" style="margin:0 0 4px;">Tick each one as you check your letter. These are reminders — you can still submit anytime.</p>
+      ${items.map((t, i) => `<label for="proof${i}"><input type="checkbox" id="proof${i}"/> <span>${escapeHtml(t)}</span></label>`).join("")}
+    </fieldset>`;
+}
+
+function draftInstr() {
+  if (state.level === 2) return `For every part, write your own words. Tap a <b>sentence starter</b> to begin, then finish the sentence. Use the paragraph checkbox where a new paragraph should begin.`;
+  if (state.level === 3) return `Write your whole reply on your own — no suggestions this time. Use what you found in Steps 1 to 3.`;
+  return `For every part, choose one of the 3 suggestions <b>or type your own response</b>. Use the paragraph checkbox where a new paragraph should begin.`;
+}
+
 function renderDraft(body, c) {
+  if (state.confirmed && state.level !== 3) { renderDraftConfirmed(body, c); return; }
+  if (state.level === 3) { renderDraftIndependent(body, c); return; }
+  const lvl = state.level;
   body.innerHTML = `
     <h2 class="step-title">✍️ Step 4 — Draft Your Report</h2>
-    <p class="step-instr">For every part, choose one of the 3 suggestions <b>or type your own response</b>. Use the paragraph checkbox where a new paragraph should begin.</p>
-    <div class="prompt-box">Your audience: ${c.formal ? "formal" : "informal"} register. Every part below is a chance to practise making your own writing choices.</div>
+    ${missedBannerHtml()}
+    ${levelChooserHtml()}
+    <p class="step-instr">${draftInstr()}</p>
+    ${registerLineHtml(c)}
+    ${lvl === 2 ? caseNotesHtml(c) : ""}
+    <div class="progress-sticky" id="progressSticky" role="status" aria-live="polite"></div>
     <div id="components"></div>
     <h3 style="color:var(--navy);font-size:15px;margin:18px 0 6px;">📄 Live preview</h3>
     <div class="letter-preview" id="preview"></div>
   `;
+  bindMissedBanner(body);
+  bindLevelChooser(body, c);
   const compsEl = $("#components", body);
-  compsEl.innerHTML = c.components.map((comp, idx) => `
+  compsEl.innerHTML = c.components.map((comp, idx) => {
+    const para = idx > 0 ? `<label class="para-toggle"><input type="checkbox" data-parakey="${escapeHtml(comp.key)}" ${state.paragraphBreaks.has(comp.key) ? "checked" : ""}/> ¶ Start a new paragraph before this</label>` : "";
+    if (lvl === 2) {
+      const st = startersFor(comp);
+      return `
     <div class="component" data-key="${escapeHtml(comp.key)}">
       <div class="label">${idx + 1}. ${escapeHtml(comp.label)}</div>
-      ${comp.options.map((o) => `<button class="option ${state.componentChoices[comp.key] === o.id ? "picked" : ""}" data-oid="${o.id}" aria-pressed="${state.componentChoices[comp.key] === o.id}">${escapeHtml(o.text)}</button>`).join("")}
-      <label style="margin-top:9px;font-size:12px;">Or write your own:</label>
-      <textarea class="custom-response" data-response-key="${escapeHtml(comp.key)}" maxlength="500" placeholder="Type your own response…">${escapeHtml(state.componentResponses[comp.key] || "")}</textarea>
+      <div class="starters" role="group" aria-label="Sentence starters for ${escapeHtml(comp.label)}">
+        ${st.map((s, si) => `<button type="button" class="starter-chip" data-si="${si}">${escapeHtml(s)}</button>`).join("")}
+      </div>
+      <label class="sr-only" for="resp${idx}">${escapeHtml(comp.label)} — write your own words</label>
+      <textarea id="resp${idx}" class="custom-response" data-response-key="${escapeHtml(comp.key)}" maxlength="500" placeholder="Write your own words here…">${escapeHtml(state.componentResponses[comp.key] || "")}</textarea>
+      ${para}
+    </div>`;
+    }
+    return `
+    <div class="component" data-key="${escapeHtml(comp.key)}">
+      <div class="label">${idx + 1}. ${escapeHtml(comp.label)}</div>
+      ${(comp.options || []).map((o) => `<button type="button" class="option ${state.componentChoices[comp.key] === o.id ? "picked" : ""}" data-oid="${escapeHtml(o.id)}" aria-pressed="${state.componentChoices[comp.key] === o.id}">${escapeHtml(o.text)}</button>`).join("")}
+      <label for="resp${idx}" style="margin-top:9px;font-size:12px;display:block;">Or write your own:</label>
+      <textarea id="resp${idx}" class="custom-response" data-response-key="${escapeHtml(comp.key)}" maxlength="500" placeholder="Type your own response…">${escapeHtml(state.componentResponses[comp.key] || "")}</textarea>
       <p class="field-note">Typing here selects “My response” instead of the 3 options.</p>
-      ${idx > 0 ? `<label class="para-toggle"><input type="checkbox" data-parakey="${escapeHtml(comp.key)}" ${state.paragraphBreaks.has(comp.key) ? "checked" : ""}/> ¶ Start a new paragraph before this</label>` : ""}
-    </div>
-  `).join("");
+      ${para}
+    </div>`;
+  }).join("");
 
-  $$(".component", compsEl).forEach((compEl) => {
+  $$(".component", compsEl).forEach((compEl, idx) => {
     const key = compEl.dataset.key;
+    const comp = c.components[idx];
+    const input = $(".custom-response", compEl);
+    const setResponse = (val) => {
+      state.componentResponses[key] = val;
+      if (val.trim()) state.componentChoices[key] = "custom";
+      else if (state.componentChoices[key] === "custom") delete state.componentChoices[key];
+      persistProgress(); updatePreview(c); updateDraftNav(body, c);
+    };
     $$(".option", compEl).forEach((btn) => btn.addEventListener("click", () => {
       state.componentChoices[key] = btn.dataset.oid;
       state.componentResponses[key] = "";
-      persistProgress(); renderDraft(body, c);
+      persistProgress();
+      renderDraft(body, c);
+      goToNextPart(body, c, idx);
     }));
-    const input = $(".custom-response", compEl);
-    input.addEventListener("input", (e) => {
-      state.componentResponses[key] = e.target.value;
-      if (e.target.value.trim()) state.componentChoices[key] = "custom";
-      else if (state.componentChoices[key] === "custom") delete state.componentChoices[key];
-      persistProgress(); updatePreview(c); updateDraftNav(body, c);
-    });
+    $$(".starter-chip", compEl).forEach((chip) => chip.addEventListener("click", () => {
+      const s = startersFor(comp)[Number(chip.dataset.si)] || "";
+      const cur = input.value;
+      const sep = cur && !/\s$/.test(cur) ? " " : "";
+      input.value = (cur + sep + s).slice(0, 500);
+      setResponse(input.value);
+      input.focus();
+      try { input.setSelectionRange(input.value.length, input.value.length); } catch (e) { /* ignore */ }
+    }));
+    input.addEventListener("input", (e) => setResponse(e.target.value));
     const cb = compEl.querySelector("[data-parakey]");
     if (cb) cb.addEventListener("change", (e) => { if (e.target.checked) state.paragraphBreaks.add(key); else state.paragraphBreaks.delete(key); persistProgress(); updatePreview(c); });
   });
   updatePreview(c); updateDraftNav(body, c);
 }
 
-function updatePreview(c) {
+/** Level 1: after a part is answered, glide to the next unanswered part. */
+function goToNextPart(body, c, fromIdx) {
+  const els = $$("#components .component", body);
+  let target = -1;
+  for (let i = fromIdx + 1; i < c.components.length; i++) { if (!isComponentAnswered(c.components[i])) { target = i; break; } }
+  if (target === -1) { for (let i = 0; i < c.components.length; i++) { if (!isComponentAnswered(c.components[i])) { target = i; break; } } }
+  if (target === -1) {
+    const done = els[fromIdx] && $(".option.picked", els[fromIdx]);
+    if (done) done.focus();
+    const cf = $(".confirm-box", body);
+    if (cf) cf.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "center" });
+    return;
+  }
+  const el = els[target];
+  if (!el) return;
+  el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+  const first = $(".option", el) || $("textarea", el);
+  if (first) { try { first.focus({ preventScroll: true }); } catch (e) { first.focus(); } }
+}
+
+function currentAssembledLetter(c) {
   let text = "";
   for (const comp of c.components) {
     const choice = state.componentChoices[comp.key];
-    const opt = comp.options.find((o) => o.id === choice);
-    const part = choice === "custom" ? (state.componentResponses[comp.key] || "").trim() : (opt ? opt.text : "");
+    const opt = (comp.options || []).find((o) => o.id === choice);
+    const part = choice === "custom" ? (state.componentResponses[comp.key] || "").trim() : (state.level === 1 && opt ? opt.text : "");
     if (!part) continue;
     if (state.paragraphBreaks.has(comp.key) && text.length) text += "\n\n";
     else if (text.length) text += " ";
     text += part;
   }
+  return text;
+}
+
+function updatePreview(c) {
+  const text = currentAssembledLetter(c);
   const el = $("#preview");
   if (el) el.innerHTML = text ? escapeHtml(text).replace(/\n/g, "<br>") : `<span class="placeholder">Your report will appear here…</span>`;
 }
@@ -786,39 +1232,163 @@ function isComponentAnswered(comp) {
 }
 
 function updateDraftNav(body, c) {
-  const allChosen = c.components.every(isComponentAnswered);
+  // Called on every keystroke in a "write your own" box, so clear the old
+  // nav/confirm blocks first instead of stacking duplicates.
+  $$(".nav-row, .confirm-box", body).forEach((el) => el.remove());
+  const done = c.components.filter(isComponentAnswered).length;
+  const total = c.components.length;
+  const allChosen = done === total;
+  const prog = $("#progressSticky", body);
+  if (prog) {
+    prog.innerHTML = `<b>${done} of ${total} parts done</b><div class="bar-track" aria-hidden="true"><div class="bar-fill" style="width:${total ? Math.round(done / total * 100) : 0}%"></div></div>`;
+  }
+  const box = document.createElement("div");
+  if (allChosen) {
+    box.className = "confirm-box";
+    box.innerHTML = `
+      <p><b>All ${total} parts are done!</b> Read your letter in the live preview. When you are happy with it, press <b>Confirm</b> — then you can polish the letter by hand before you submit.</p>
+      <button type="button" class="btn" id="confirmLetter">✅ Confirm my letter</button>`;
+  } else {
+    box.className = "confirm-box pending";
+    box.textContent = `Finish all ${total} parts to confirm your letter (${done}/${total} done).`;
+  }
+  body.appendChild(box);
+  const confirmBtn = $("#confirmLetter", box);
+  if (confirmBtn) confirmBtn.addEventListener("click", () => {
+    state.confirmed = true;
+    state.finalLetter = currentAssembledLetter(c);
+    persistProgress();
+    renderDraft(body, c);
+    const ta = $("#finalLetter", body);
+    if (ta) ta.focus();
+  });
   navRow(body, {
-    nextLabel: "Submit Report →",
-    nextDisabled: !allChosen,
+    nextLabel: null,
     onBack: () => { state.step = 2; persistProgress(); render(); },
-    onNext: async () => { await doSubmit(body, c); },
   });
 }
 
+/** After Confirm (Levels 1-2): the live preview turns into an editable box. The pupil's
+ * part choices stay locked in (that is what the choices score is based on);
+ * the text they submit is whatever is in the box. */
+function renderDraftConfirmed(body, c) {
+  body.innerHTML = `
+    <h2 class="step-title">✍️ Step 4 — Draft Your Report</h2>
+    ${missedBannerHtml()}
+    <div class="locked-note">✅ Your letter is confirmed. You can now <b>edit it by hand</b> — fix spelling, smooth the wording, make it sound like you. What you see below is exactly what will be marked.</div>
+    ${state.level >= 2 ? caseNotesHtml(c) : ""}
+    <h3 style="color:var(--navy);font-size:15px;margin:10px 0 6px;">📄 Live preview — now editable</h3>
+    <label for="finalLetter" class="field-note" style="display:block;margin-bottom:6px;">Edit your letter here</label>
+    <textarea class="letter-edit" id="finalLetter" maxlength="4000" spellcheck="true">${escapeHtml(state.finalLetter)}</textarea>
+    ${proofreadHtml()}
+  `;
+  bindMissedBanner(body);
+  const ta = $("#finalLetter", body);
+  navRow(body, {
+    backLabel: "↩ Change my parts", nextLabel: "Submit Report →",
+    nextDisabled: !state.finalLetter.trim(),
+    onBack: () => {
+      const untouched = state.finalLetter.trim() === currentAssembledLetter(c).trim();
+      if (!untouched && !confirm("If you go back to change your parts, the edits you made by hand will be lost. Continue?")) return;
+      state.confirmed = false; state.finalLetter = "";
+      persistProgress(); renderDraft(body, c);
+    },
+    onNext: async () => { state.finalLetter = ta.value; persistProgress(); await doSubmit(body, c); },
+  });
+  ta.addEventListener("input", () => {
+    state.finalLetter = ta.value; persistProgress();
+    const next = $("#navNext", body); if (next) next.disabled = !ta.value.trim();
+  });
+}
+
+/** Level 3: one blank page for the whole letter. */
+function renderDraftIndependent(body, c) {
+  body.innerHTML = `
+    <h2 class="step-title">✍️ Step 4 — Draft Your Report</h2>
+    ${missedBannerHtml()}
+    ${levelChooserHtml()}
+    <p class="step-instr">${draftInstr()}</p>
+    ${registerLineHtml(c)}
+    ${caseNotesHtml(c)}
+    <label for="finalLetter" class="field-note" style="display:block;margin-bottom:6px;">Write your whole letter here</label>
+    <textarea class="letter-edit" id="finalLetter" maxlength="4000" spellcheck="true" placeholder="Start with your salutation, then write your letter…">${escapeHtml(state.finalLetter)}</textarea>
+    <p class="word-count" id="wordCount" role="status"></p>
+    ${proofreadHtml()}
+  `;
+  bindMissedBanner(body);
+  bindLevelChooser(body, c);
+  const ta = $("#finalLetter", body);
+  const wc = $("#wordCount", body);
+  const refresh = () => {
+    const n = countWords(ta.value);
+    wc.textContent = `${n} word${n === 1 ? "" : "s"} — aim for about 100–150 words — a guide, not a rule.` + (n < 8 ? " Write at least 8 words to submit." : "");
+    const next = $("#navNext", body); if (next) next.disabled = n < 8;
+  };
+  navRow(body, {
+    nextLabel: "Submit Report →",
+    nextDisabled: countWords(state.finalLetter) < 8,
+    onBack: () => { state.step = 2; persistProgress(); render(); },
+    onNext: async () => { state.finalLetter = ta.value; persistProgress(); await doSubmit(body, c); },
+  });
+  ta.addEventListener("input", () => { state.finalLetter = ta.value; persistProgress(); refresh(); });
+  refresh();
+}
+
+function buildSubmitPayload(c) {
+  const lvl = state.level;
+  const payload = {
+    name: state.playerName || "Anonymous Detective",
+    playerClass: state.playerClass || "",
+    deviceId: state.deviceId || "",
+    taskAnswers: state.taskAnswers,
+    stimulusSelected: Array.from(state.stimulusSelected),
+    ownContent: state.ownContent,
+    level: lvl,
+    hideOnBoard: lsGet("bossHideOnBoard") === "1",
+  };
+  if (lvl === 3) {
+    payload.componentChoices = {};
+    payload.componentResponses = {};
+    payload.paragraphBreaks = [];
+    payload.finalLetter = state.finalLetter.trim();
+    payload.signOffName = "";
+    return payload;
+  }
+  payload.componentChoices = state.componentChoices;
+  payload.componentResponses = state.componentResponses;
+  payload.paragraphBreaks = Array.from(state.paragraphBreaks);
+  payload.finalLetter = state.confirmed ? state.finalLetter.trim() : "";
+  const nameKey = state.componentChoices.name;
+  let signOff = "";
+  if (nameKey === "custom") signOff = state.componentResponses.name || "";
+  else if (lvl === 1) {
+    const nameComp = c.components.find((x) => x.key === "name");
+    const opt = nameComp && (nameComp.options || []).find((o) => o.id === nameKey);
+    signOff = opt ? opt.text : "";
+  }
+  payload.signOffName = signOff.trim();
+  return payload;
+}
+
 async function doSubmit(body, c) {
-  const name = state.playerName || "Anonymous Detective";
-  body.innerHTML = `<p class="step-instr">Filing your report with the Agency…</p>`;
+  body.innerHTML = `<p class="step-instr" role="status">Filing your report with the Agency…</p>`;
   try {
     const res = await api("/api/cases/" + c.id + "/submit", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        name,
-        playerClass: state.playerClass || "",
-        deviceId: state.deviceId || "",
-        taskAnswers: state.taskAnswers,
-        stimulusSelected: Array.from(state.stimulusSelected),
-        ownContent: state.ownContent,
-        componentChoices: state.componentChoices,
-        componentResponses: state.componentResponses,
-        paragraphBreaks: Array.from(state.paragraphBreaks),
-        signOffName: ((state.componentChoices.name === "custom" ? state.componentResponses.name : (c.components.find(x => x.key === "name")?.options.find(o => o.id === state.componentChoices.name)?.text || "")) || "").trim(),
-      }),
+      body: JSON.stringify(buildSubmitPayload(c)),
     });
     state.result = res;
     state.step = 4;
     clearProgress(c.id);
+    try { saveMissed(c.id, res); } catch (e) { /* ignore */ }
+    const lv = Number(res.level) || state.level;
+    if (res.score >= (res.threshold ?? 85) && lv < 3) {
+      state.profile = Object.assign({}, state.profile || {}, { unlockedLevel: Math.max(unlockedLevel(), lv + 1) });
+    }
+    fetchMeta().catch(() => {}); // refresh rank / unlocks in the background
     render();
+    window.scrollTo(0, 0);
   } catch (e) {
     body.innerHTML = `<p class="step-instr">Something went wrong filing your report: ${escapeHtml(e.message)}. <button class="btn secondary" id="retry">Try again</button></p>`;
     $("#retry", body).addEventListener("click", () => renderDraft(body, c));
@@ -826,108 +1396,333 @@ async function doSubmit(body, c) {
 }
 
 // ---- Step 4: Verdict ----
+/** Highlights the evidence sentences inside the pupil's letter. Matching is
+ * done on the RAW text (ranges), and every segment is escaped afterwards, so
+ * nothing from the server or the pupil can inject markup. Not found => skipped. */
+function highlightLetterHtml(letter, evidences) {
+  const text = String(letter || "");
+  const ranges = [];
+  (evidences || []).forEach((ev) => {
+    const e = String(ev || "").trim();
+    if (!e) return;
+    const i = text.indexOf(e);
+    if (i !== -1) ranges.push([i, i + e.length]);
+  });
+  ranges.sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  ranges.forEach((r) => {
+    const last = merged[merged.length - 1];
+    if (last && r[0] <= last[1]) last[1] = Math.max(last[1], r[1]);
+    else merged.push(r.slice());
+  });
+  let out = "", pos = 0;
+  merged.forEach(([s, e]) => {
+    out += escapeHtml(text.slice(pos, s)) + "<mark>" + escapeHtml(text.slice(s, e)) + "</mark>";
+    pos = e;
+  });
+  out += escapeHtml(text.slice(pos));
+  return out.replace(/\n/g, "<br>");
+}
+
+function fixCount() { return Number(lsGet("bossFixCount")) || 0; }
+
 function renderVerdict(body, c) {
   const r = state.result;
   if (!r) { body.innerHTML = `<p>No result yet.</p>`; return; }
+  const bd = r.breakdown || {};
   const rows = [
-    ["Task identification", r.breakdown.taskIdentification],
-    ["Evidence gathered", r.breakdown.stimulusKeyInfo],
-    ["Your hunch", r.breakdown.ownContent],
-    ["Letter choices", r.breakdown.letterChoices],
-    ["Paragraphing", r.breakdown.paragraphing],
-    ["Overall quality (AI)", r.breakdown.overallQuality],
-  ];
+    ["Briefing", bd.taskIdentification],
+    ["Evidence", bd.stimulusKeyInfo],
+    ["Own idea", bd.ownContent],
+    ["Letter content & accuracy", bd.letterChoices],
+    ["Paragraphing", bd.paragraphing],
+    ["Language & organisation", bd.overallQuality],
+  ].filter(([, b]) => b);
   const threshold = r.threshold ?? 85;
   const passed = r.score >= threshold;
+  const lvl = Number(r.level) || state.level || 1;
+  const aiFailures = Array.isArray(r.aiFailures) ? r.aiFailures : [];
+  const moe = r.moe && r.moe.taskFulfilment && r.moe.languageOrg ? r.moe : null;
+  const ck = r.checklist || {};
+  const points = Array.isArray(ck.points) ? ck.points : [];
+  const own = ck.ownIdea || null;
+  const fmt = Array.isArray(ck.format) ? ck.format : [];
+  const langErrs = Array.isArray(ck.languageErrors) ? ck.languageErrors : [];
+  const wrong = Array.isArray(ck.wrongDetails) ? ck.wrongDetails : [];
+  const kept = Array.isArray(ck.keptDistractors) ? ck.keptDistractors : [];
+  const flags = Array.isArray(r.flags) ? r.flags : [];
+  const stars = r.stars || null;
+  const fix = r.fixTask || null;
+  const evidences = points.map((p) => p && p.evidence).filter(Boolean);
+  const pct = (b) => (b && b.max > 0 ? Math.max(0, Math.min(100, Math.round(b.score / b.max * 100))) : 0);
+
+  const ST = {
+    found: { cls: "found", icon: "✅", text: "Found" },
+    partial: { cls: "partial", icon: "🟡", text: "Partly there — check the facts" },
+    missing: { cls: "missing", icon: "❌", text: "Missing" },
+  };
+  const OWN = {
+    good: "✅ Good idea — it fits the situation.",
+    partial: "🟡 Partly there — your idea needs a little more.",
+    weak: "❌ Needs work — try a clearer idea of your own.",
+  };
+  const STAR_ROWS = [["briefing", "Briefing"], ["evidence", "Evidence"], ["hunch", "Own idea"], ["language", "Language"]];
+
+  const canNudge = passed && lvl < 3;
+  const nextLevel = lvl + 1;
+
   body.innerHTML = `
     <h2 class="step-title">${passed ? "🎉 Situation Handled!" : "📨 Situation Filed"}</h2>
+    ${aiFailures.length ? `<div class="ai-warning" role="alert">⚠️ <b>Your teacher will check part of this score.</b> The AI marker could not check: ${aiFailures.map((f) => escapeHtml(f.label || f.part)).join(", ")}. The score below uses an estimate for ${aiFailures.length > 1 ? "those parts" : "that part"}, and your teacher may update it.</div>`
+      : (r.needsTeacherReview ? `<div class="ai-warning" role="status">⏳ Your teacher will take a look at this report too.</div>` : "")}
+    ${r.letterEdited ? `<div class="locked-note">✏️ Your edited letter is what was marked.</div>` : ""}
     <div class="score-hero">
-      <div class="big">${r.score}<span class="of">/${r.max}</span></div>
-      <div class="of">points earned, Detective ${escapeHtml(state.playerName || "")}${state.playerClass ? " (" + escapeHtml(state.playerClass) + ")" : ""} — mastery threshold is ${threshold}/${r.max}</div>
-    </div>
-    ${rows.map(([label, b]) => `
-      <div class="bar-row">
-        <div class="lbl"><span>${label}</span><span>${b.score}/${b.max}</span></div>
-        <div class="bar-track"><div class="bar-fill" style="width:${Math.round(b.score / b.max * 100)}%"></div></div>
-        ${b.aiNote ? `<div class="ai-note">🤖 ${escapeHtml(b.aiNote)}</div>` : ""}
+      ${moe ? `
+        <div class="of">Exam-style estimate</div>
+        <div class="big" aria-label="Exam-style estimate: ${escapeHtml(moe.total)} out of ${escapeHtml(moe.max || 14)}">${escapeHtml(moe.total)}<span class="of">/${escapeHtml(moe.max || 14)}</span></div>
+        <div class="est-rows">
+          <span class="est-pill">Task Fulfilment <b>${escapeHtml(moe.taskFulfilment.score)}/${escapeHtml(moe.taskFulfilment.max ?? 6)}</b></span>
+          <span class="est-pill">Language &amp; Organisation <b>${escapeHtml(moe.languageOrg.score)}/${escapeHtml(moe.languageOrg.max ?? 8)}</b></span>
+        </div>
+        <div class="est-note">This is an estimate — your teacher can adjust it.</div>
+      ` : ""}
+      <div class="points-meter">
+        <div class="lbl" style="display:flex;justify-content:space-between;font-size:13px;color:#5b4321;margin-bottom:3px;"><span>🕵️ Detective points, ${escapeHtml(state.playerName || "")}${state.playerClass ? " (" + escapeHtml(state.playerClass) + ")" : ""}</span><span><b>${escapeHtml(r.score)}/${escapeHtml(r.max)}</b></span></div>
+        <div class="bar-track" role="img" aria-label="Detective points: ${escapeHtml(r.score)} out of ${escapeHtml(r.max)}. Mastery needs ${escapeHtml(threshold)}."><div class="bar-fill" style="width:${Math.max(0, Math.min(100, Math.round(r.score / (r.max || 100) * 100)))}%"></div></div>
+        <div class="field-note">Mastery threshold: ${escapeHtml(threshold)}/${escapeHtml(r.max)} — ${passed ? "you reached it! ✔" : "not reached yet"}</div>
       </div>
-    `).join("")}
+    </div>
+
+    ${stars ? `
+      <ul class="stars-row" aria-label="Your stars">
+        ${STAR_ROWS.map(([k, label]) => `<li class="${stars[k] ? "on" : ""}">${stars[k] ? "⭐" : "☆"} ${label}: ${stars[k] ? "star earned" : "no star yet"}</li>`).join("")}
+      </ul>` : ""}
+
+    ${points.length ? `
+      <div class="v-section">
+        <h3>🔎 Did you include every required detail?</h3>
+        <ul class="check-list">
+          ${points.map((p) => { const s = ST[p.status] || ST.missing; return `<li class="${s.cls}"><span class="st">${s.icon} ${s.text}</span>${escapeHtml(p.text)}</li>`; }).join("")}
+        </ul>
+      </div>` : ""}
+
+    ${own ? `
+      <div class="v-section">
+        <h3>💡 Your own idea</h3>
+        <div class="prompt-box" style="margin:0;">${escapeHtml(OWN[own.status] || OWN.weak)}${own.inLetter === false ? " It is not in your letter yet." : ""}${own.linkedToClue === false ? " Try linking it to a clue from the notice." : ""}${own.note ? `<br>${escapeHtml(own.note)}` : ""}</div>
+      </div>` : ""}
+
+    ${fmt.length ? `
+      <div class="v-section">
+        <h3>📋 Letter format</h3>
+        <ul class="check-list">
+          ${fmt.map((f) => `<li class="${f.ok ? "found" : "missing"}"><span class="st">${f.ok ? "✔ Good" : "✖ Check this"}</span><b>${escapeHtml(f.label)}</b>${f.detail ? ` — ${escapeHtml(f.detail)}` : ""}</li>`).join("")}
+        </ul>
+      </div>` : ""}
+
+    ${(langErrs.length || wrong.length || kept.length || flags.length) ? `
+      <div class="v-section">
+        <h3>👀 Things to look at</h3>
+        <ul class="look-list">
+          ${langErrs.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}
+          ${wrong.map((t) => `<li>Check this number against the notice: ${escapeHtml(t)}</li>`).join("")}
+          ${kept.map((k) => `<li>You kept this sentence that does not fit: ${escapeHtml(k.text || k.label)}</li>`).join("")}
+          ${flags.map((f) => `<li>${escapeHtml(f.label)}</li>`).join("")}
+        </ul>
+      </div>` : ""}
+
+    <div class="v-section">
+      <h3>✉️ Your letter</h3>
+      ${evidences.length ? `<p class="field-note" style="margin:0 0 6px;">The <mark>highlighted</mark> sentences show where you used the required details.</p>` : ""}
+      <div class="letter-preview">${highlightLetterHtml(r.assembledLetter, evidences)}</div>
+    </div>
+
+    <div class="v-section">
+      <h3>🕵️ Detective points breakdown</h3>
+      ${rows.map(([label, b]) => `
+        <div class="bar-row">
+          <div class="lbl"><span>${escapeHtml(label)}</span><span>${escapeHtml(b.score)}/${escapeHtml(b.max)}</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct(b)}%"></div></div>
+          ${b.aiNote ? `<div class="ai-note">🤖 ${escapeHtml(b.aiNote)}</div>` : ""}
+          ${b.aiFailed ? `<div class="ai-flag">⚠️ Estimated score — waiting for your teacher to check.</div>` : ""}
+        </div>
+      `).join("")}
+    </div>
+
+    ${fix ? `
+      <div class="fix-card" id="fixCard">
+        <h3>🔧 Fix this one thing</h3>
+        <p><b>${escapeHtml(fix.title)}</b></p>
+        <p>${escapeHtml(fix.prompt)}</p>
+        <label for="fixText" class="sr-only">Your fix</label>
+        <textarea id="fixText" maxlength="1000" placeholder="Type your fix here…" style="min-height:${fix.kind === "pair" ? 80 : 90}px;">${fix.kind === "pair" && fix.salutation ? escapeHtml(fix.salutation + "\n") : ""}</textarea>
+        <div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <button type="button" class="btn" id="fixCheck">Check my fix</button>
+          <span class="fix-msg" id="fixMsg" role="status" aria-live="polite"></span>
+        </div>
+      </div>` : ""}
+
     ${r.improvement ? `
       <div class="improve-box">
         <h3 style="color:var(--navy);font-size:15px;margin:0 0 6px;">🚀 Your boss's coach rewrote a stronger version</h3>
-        <p class="step-instr" style="margin-bottom:10px;">You scored below the ${threshold}-point mastery threshold, so here's what a stronger reply could look like — study what changed before your next case.</p>
+        <p class="step-instr" style="margin-bottom:10px;">You scored below the ${escapeHtml(threshold)}-point mastery threshold, so here's what a stronger reply could look like — study what changed before your next case.</p>
         <div class="letter-preview" style="margin-bottom:10px;">${escapeHtml(r.improvement.improvedLetter).replace(/\n/g, "<br>")}</div>
         ${r.improvement.tips && r.improvement.tips.length ? `
           <ul class="tips-list">${r.improvement.tips.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}</ul>
         ` : ""}
       </div>
     ` : ""}
-    <h3 style="color:var(--navy);font-size:15px;margin-top:20px;">Your report vs. the model answer</h3>
-    <div class="model-compare"><b>Your letter:</b>\n${escapeHtml(r.assembledLetter)}\n\n<b>Model answer:</b>\n${escapeHtml(r.modelLetter)}</div>
+
+    <details class="model-d">
+      <summary>One good example (other accurate wordings are fine too)</summary>
+      <div class="model-compare" style="margin-top:10px;">${escapeHtml(r.modelLetter)}</div>
+    </details>
+
+    ${canNudge ? `
+      <div class="nudge">
+        <span>🚀 <b>Ready for Level ${nextLevel}?</b> You mastered this case — try it again with less help.</span>
+        <button type="button" class="btn" id="nudgeGo">Try Level ${nextLevel} →</button>
+      </div>` : ""}
+
+    <div class="verdict-actions">
+      <button type="button" class="btn primary" id="vRetry">🔁 Try this case again</button>
+      <button type="button" class="btn secondary" id="vCases">← Case Files</button>
+      <button type="button" class="btn" id="vBoard">🏆 View Leaderboard</button>
+    </div>
   `;
-  navRow(body, {
-    backLabel: "← Case Files", nextLabel: "🏆 View Leaderboard",
-    onBack: () => { state.screen = "home"; loadHome(); },
-    onNext: () => openLeaderboard(),
-  });
+
+  $("#vRetry", body).addEventListener("click", () => openCase(c.id));
+  $("#vCases", body).addEventListener("click", () => { state.screen = "home"; loadHome(); });
+  $("#vBoard", body).addEventListener("click", () => openLeaderboard());
+  const nudge = $("#nudgeGo", body);
+  if (nudge) nudge.addEventListener("click", () => openCase(c.id, { level: nextLevel }));
+
+  if (fix) {
+    const btn = $("#fixCheck", body);
+    const msg = $("#fixMsg", body);
+    let counted = false;
+    btn.addEventListener("click", async () => {
+      const text = $("#fixText", body).value;
+      btn.disabled = true;
+      msg.className = "fix-msg";
+      msg.textContent = "Checking…";
+      try {
+        const res = await api("/api/cases/" + c.id + "/fix-check", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ task: { kind: fix.kind, pointId: fix.pointId }, text }),
+        });
+        if (res.ok) {
+          msg.className = "fix-msg ok";
+          msg.textContent = "⭐ Fixed! " + (res.message || "");
+          if (!counted) { counted = true; lsSet("bossFixCount", String(fixCount() + 1)); }
+        } else {
+          msg.textContent = res.message || "Not quite yet — have another go.";
+        }
+      } catch (e) {
+        msg.textContent = "Couldn't check that right now: " + e.message;
+      }
+      btn.disabled = false;
+    });
+  }
+}
+
+// ---- overlays (leaderboard, my scores) ----
+function showOverlay(label, innerHtml) {
+  const prev = document.activeElement;
+  const overlay = document.createElement("div");
+  overlay.className = "overlay";
+  overlay.innerHTML = `
+    <div class="board" role="dialog" aria-modal="true" aria-label="${escapeHtml(label)}">
+      <button type="button" class="board-close" aria-label="Close">✕</button>
+      ${innerHtml}
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = () => {
+    overlay.remove();
+    document.removeEventListener("keydown", onKey);
+    if (prev && prev.focus) { try { prev.focus(); } catch (e) { /* ignore */ } }
+  };
+  const onKey = (e) => { if (e.key === "Escape") close(); };
+  document.addEventListener("keydown", onKey);
+  $(".board-close", overlay).addEventListener("click", close);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+  $(".board-close", overlay).focus();
+  return overlay;
 }
 
 // ---- leaderboard ----
 async function openLeaderboard() {
-  const overlay = document.createElement("div");
-  overlay.className = "overlay";
-  overlay.innerHTML = `
-    <div class="board">
-      <button class="board-close" id="closeBoard">✕</button>
-      <h2>🏆 Wall of Fame</h2>
-      <div id="lbList">Loading…</div>
+  const hasClass = !!state.playerClass;
+  let tab = hasClass ? "class" : "school";
+  const overlay = showOverlay("Wall of Fame", `
+    <h2>🏆 Wall of Fame</h2>
+    <div class="lb-tabs" role="tablist" aria-label="Which wall">
+      ${hasClass ? `<button type="button" class="lb-tab" role="tab" id="tabClass" data-tab="class">My class</button>` : ""}
+      <button type="button" class="lb-tab" role="tab" id="tabSchool" data-tab="school">School</button>
     </div>
-  `;
-  document.body.appendChild(overlay);
-  $("#closeBoard", overlay).addEventListener("click", () => overlay.remove());
-  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
-  try {
-    const data = await api("/api/leaderboard");
-    const list = data.leaderboard || [];
-    $("#lbList", overlay).innerHTML = list.length ? list.map((row, i) => `
-      <div class="lb-row">
-        <div><span class="lb-rank">#${i+1}</span><span class="lb-name">${escapeHtml(row.player_name)}</span><span class="lb-case">${escapeHtml(row.case_title)}</span></div>
-        <div class="lb-score">${row.score}</div>
-      </div>
-    `).join("") : `<p style="color:#f4e8c8">No cases solved yet — be the first!</p>`;
-  } catch (e) {
-    $("#lbList", overlay).innerHTML = `<p style="color:#f4e8c8">Couldn't load the leaderboard right now.</p>`;
-  }
+    <label class="lb-hide"><input type="checkbox" id="hideMe" ${lsGet("bossHideOnBoard") === "1" ? "checked" : ""}/> Hide my name from the Wall</label>
+    <div id="lbList" role="tabpanel" aria-live="polite">Loading…</div>
+  `);
+  $("#hideMe", overlay).addEventListener("change", (e) => { lsSet("bossHideOnBoard", e.target.checked ? "1" : "0"); });
+  const load = async () => {
+    $$(".lb-tab", overlay).forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+    const listEl = $("#lbList", overlay);
+    listEl.textContent = "Loading…";
+    try {
+      const path = tab === "class" ? "/api/leaderboard?class=" + encodeURIComponent(state.playerClass) : "/api/leaderboard";
+      const data = await api(path);
+      if (!document.body.contains(overlay)) return;
+      const list = data.leaderboard || [];
+      listEl.innerHTML = list.length ? list.map((row, i) => `
+        <div class="lb-row">
+          <div><span class="lb-rank">#${i+1}</span><span class="lb-name">${escapeHtml(row.player_name)}</span>${tab === "school" && row.player_class ? ` <span class="lb-case" style="display:inline;">(${escapeHtml(row.player_class)})</span>` : ""}<span class="lb-case">${escapeHtml(row.case_title)}</span></div>
+          <div class="lb-score">${escapeHtml(row.score)}/${escapeHtml(row.max_score)}</div>
+        </div>
+      `).join("") : `<p style="color:#f4e8c8">No cases solved yet — be the first!</p>`;
+    } catch (e) {
+      listEl.innerHTML = `<p style="color:#f4e8c8">Couldn't load the leaderboard right now.</p>`;
+    }
+  };
+  $$(".lb-tab", overlay).forEach((b) => b.addEventListener("click", () => { tab = b.dataset.tab; load(); }));
+  load();
 }
 
 // ---- my scores ----
 async function openMyScores() {
-  const overlay = document.createElement("div");
-  overlay.className = "overlay";
-  overlay.innerHTML = `
-    <div class="board">
-      <button class="board-close" id="closeScores">✕</button>
-      <h2>📈 My Scores</h2>
-      <div id="myScoresList">Loading…</div>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  $("#closeScores", overlay).addEventListener("click", () => overlay.remove());
-  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+  const overlay = showOverlay("My Scores", `
+    <h2>📈 My Scores</h2>
+    <div id="myScoresList" aria-live="polite">Loading…</div>
+  `);
   if (!state.playerName) {
     $("#myScoresList", overlay).innerHTML = `<p style="color:#f4e8c8">Identify yourself first to see your scores.</p>`;
     return;
   }
   try {
-    const qs = "?name=" + encodeURIComponent(state.playerName) + "&playerClass=" + encodeURIComponent(state.playerClass || "") + "&deviceId=" + encodeURIComponent(state.deviceId || "");
-    const data = await api("/api/my-scores" + qs);
+    const data = await api("/api/my-scores" + identityQs());
+    if (data && data.profile) state.profile = data.profile;
+    if (!document.body.contains(overlay)) return;
     const list = data.scores || [];
-    $("#myScoresList", overlay).innerHTML = list.length ? list.map((row) => `
+    $("#myScoresList", overlay).innerHTML = list.length ? list.map((row) => {
+      const d = row.delta;
+      const deltaTxt = (typeof d === "number" && Number.isFinite(d))
+        ? (d > 0 ? `Up +${d} since your last try` : d < 0 ? `Down −${Math.abs(d)} since your last try` : `Same as your last try (±0)`)
+        : "";
+      const moe = row.moe && row.moe.taskFulfilment && row.moe.languageOrg ? row.moe : null;
+      const lv = Number(row.level);
+      return `
       <div class="lb-row">
-        <div><span class="lb-case">${escapeHtml(row.case_title)}</span></div>
-        <div class="lb-score">${row.score}/${row.max_score}</div>
-      </div>
-    `).join("") : `<p style="color:#f4e8c8">No cases solved yet — go crack one!</p>`;
+        <div><span class="lb-case">${escapeHtml(row.case_title)}</span>
+          ${lv >= 1 ? `<span class="lb-sub light">Level ${lv} — ${escapeHtml((LEVELS[lv - 1] || {}).name || "")}</span>` : ""}
+          ${moe ? `<span class="lb-sub light">Exam-style estimate: TF ${escapeHtml(moe.taskFulfilment.score ?? moe.taskFulfilment)}/6 · L&amp;O ${escapeHtml(moe.languageOrg.score ?? moe.languageOrg)}/8</span>` : ""}
+          ${row.personalBest ? `<span class="lb-sub">🏅 Personal best!</span>` : ""}
+          ${deltaTxt ? `<span class="lb-sub light">${d > 0 ? "▲" : d < 0 ? "▼" : "＝"} ${escapeHtml(deltaTxt)}</span>` : ""}
+          ${row.pendingReview ? `<span class="lb-sub">⏳ Your teacher is checking part of this score</span>` : ""}
+          ${row.teacherComment ? `<span class="lb-sub" style="color:#2f5a22;">🧑‍🏫 Teacher's note: ${escapeHtml(row.teacherComment)}</span>` : ""}
+        </div>
+        <div class="lb-score">${escapeHtml(row.score)}/${escapeHtml(row.max_score)}</div>
+      </div>`;
+    }).join("") : `<p style="color:#f4e8c8">No cases solved yet — go crack one!</p>`;
   } catch (e) {
     $("#myScoresList", overlay).innerHTML = `<p style="color:#f4e8c8">Couldn't load your scores right now.</p>`;
   }

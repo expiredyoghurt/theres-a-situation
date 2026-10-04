@@ -47,6 +47,147 @@ const SPORTS_DAY_SVG = `
   <text x="530" y="358" font-size="11" fill="#7A2E22" text-anchor="middle">will be around!</text>
 </svg>`.trim();
 
+// ---------------------------------------------------------------------------
+// v1.14: both tutorial cases are written out in full as the standard 13-part
+// Step 4 structure. Every wrong option is a REALISTIC slip a Primary 6 pupil
+// could actually make (wrong date, wrong register, mismatched sign-off,
+// vague or illogical idea) — never an obviously silly line — because the
+// wrong options are where the learning happens.
+// ---------------------------------------------------------------------------
+
+const LABELS = {
+  salutation: "Salutation (Audience)", greeting: "Greeting / Introduction", purpose: "Purpose", context: "Context",
+  keyinfo1: "Key information 1", keyinfo2: "Key information 2", keyinfo3: "Key information 3", keyinfo4: "Key information 4", keyinfo5: "Key information 5",
+  ownIdea: "Own idea", closing: "Closing sentence", signoff: "Sign-off", name: "Name",
+};
+const ORDER = ["salutation", "greeting", "purpose", "context", "keyinfo1", "keyinfo2", "keyinfo3", "keyinfo4", "keyinfo5", "ownIdea", "closing", "signoff", "name"];
+
+/** parts: { key: [correct, wrongA, wrongB] }  — stored ids: "a" is always the correct one (the client sees opaque, shuffled ids). */
+function buildComponents(parts) {
+  return ORDER.map((key) => ({
+    key, label: LABELS[key],
+    options: ["a", "b", "c"].map((id, i) => ({ id, text: parts[key][i] })),
+  }));
+}
+
+/** Join the correct options the same way the Worker's assembleLetter() does. */
+function modelLetterFrom(parts, breaks) {
+  let out = "", prev = "";
+  for (const key of ORDER) {
+    const text = parts[key][0];
+    if (out) out += breaks.includes(key) ? "\n\n" : (prev === "salutation" || key === "signoff" || key === "name") ? "\n" : " ";
+    out += text;
+    prev = key;
+  }
+  return out;
+}
+
+const BREAKS = ["greeting", "keyinfo1", "ownIdea", "closing", "signoff"];
+
+const PARTS_1 = {
+  salutation: ["Dear Mr Kumar,", "Dear Sir/Madam,", "Hi Mr Kumar,"],
+  greeting: ["I hope this email finds you well.", "Hope you are doing great!", "I trust that this email will reach you promptly."],
+  purpose: [
+    "I am writing to inform you that I am unable to attend the Recycling Fair on Saturday, 14 March, and to suggest another way I can help.",
+    "I am writing to ask whether the Recycling Fair can be moved to a day that suits me better.",
+    "I am writing to tell you that I cannot come to the Recycling Fair, so please find someone else.",
+  ],
+  context: [
+    "Unfortunately, I have a prior family commitment on that day and will not be able to volunteer.",
+    "Unfortunately, I do not think the Fair is very important, so I have made other plans.",
+    "Unfortunately, I will be attending another school's fair on that day.",
+  ],
+  keyinfo1: [
+    "I understand that the Fair will be held on Saturday, 14 March, from 9am to 12pm.",
+    "I understand that the Fair will be held on Saturday, 16 March, from 9am to 12pm.",
+    "I understand that the Fair will be held on a Saturday morning in March, but I did not note the exact date.",
+  ],
+  keyinfo2: [
+    "I also know that it will take place at the School Hall.",
+    "I also know that it will take place at the School Field.",
+    "I also know that it will take place somewhere in the school, but I am not sure where.",
+  ],
+  keyinfo3: [
+    "Volunteers are needed to man the booths and sort recyclables during the Fair.",
+    "Volunteers are needed to cook food and serve drinks at the booths during the Fair.",
+    "Volunteers are needed to help in some way during the Fair, although I am not sure how.",
+  ],
+  keyinfo4: [
+    "I understand that pupils who wish to volunteer must sign up with you by 7 March.",
+    "I understand that pupils who wish to volunteer must sign up with you by 17 March.",
+    "I understand that pupils who wish to volunteer must sign up with you before the end of the term.",
+  ],
+  keyinfo5: [
+    "I am sorry that I cannot man a booth together with the other volunteers on the day.",
+    "I am not sorry at all, since the Fair does not interest me very much.",
+    "I am sorry, and I may still come on the day if my plans change, even though I said I cannot.",
+  ],
+  ownIdea: [
+    "Since I cannot be there, I would like to design publicity posters before 7 March so that more pupils know about the Fair.",
+    "Since I cannot be there, I could help by coming to the Fair for the last half hour to sort recyclables.",
+    "Since I cannot be there, I could help by serving the free popcorn to the visitors on the day.",
+  ],
+  closing: [
+    "Thank you for considering my suggestion, and I apologise for any inconvenience caused.",
+    "Please reply as soon as possible, because I need your answer today.",
+    "That is all I wanted to say, so goodbye.",
+  ],
+  signoff: ["Yours sincerely,", "Yours faithfully,", "Cheers,"],
+  name: ["Wei Ming Tan", "Wei Ming", "A concerned pupil"],
+};
+
+const PARTS_2 = {
+  salutation: ["Hi Wei Jie,", "Dear Sir/Madam,", "Dear Mr Wei Jie,"],
+  greeting: ["How are you? I hope you have been well!", "I am writing to extend my warmest greetings to you.", "Hey!!! Long time no see!!!"],
+  purpose: [
+    "I heard you missed the announcement about Sports Day, so I thought I would fill you in and invite you to join our house group!",
+    "I am writing to formally notify you of an upcoming school event.",
+    "I am writing to tell you that Sports Day has been cancelled.",
+  ],
+  context: [
+    "I saw the notice on the school board yesterday, and it sounds like it will be a great day.",
+    "I saw the notice, but I think you should ignore it because it is not important.",
+    "I saw the notice and told everyone else about it, but not you.",
+  ],
+  keyinfo1: [
+    "It will be held on Friday, 21 March, from 2pm to 5pm.",
+    "It will be held on Friday, 28 March, from 2pm to 5pm.",
+    "It will be held on a Friday afternoon, but I forgot which one.",
+  ],
+  keyinfo2: [
+    "It will take place at the School Field.",
+    "It will take place at the School Hall.",
+    "It will take place at school, but I am not sure where.",
+  ],
+  keyinfo3: [
+    "Remember to bring your water bottle and your house T-shirt.",
+    "Remember to bring your school bag and your PE shoes.",
+    "Remember to bring something to drink and wear something comfortable.",
+  ],
+  keyinfo4: [
+    "There will also be a class photo right after the closing ceremony, so please do not leave early!",
+    "There will also be a class photo right before the opening ceremony, so please come early!",
+    "There will also be a class photo at some point during the event, I think.",
+  ],
+  keyinfo5: [
+    "I would really love for you to join our house group and cheer with us!",
+    "You must join our house group, otherwise you might get into trouble.",
+    "You can join any house group you like; it does not matter to me.",
+  ],
+  ownIdea: [
+    "To warm up for the day, we could practise running together at the field after school on Wednesday.",
+    "We could skip Sports Day and go to the mall together instead.",
+    "I could run your races for you so that you can stay at home.",
+  ],
+  closing: [
+    "Let me know if you would like to join, and I will save a spot for you!",
+    "Tell me right now, or I will find someone else.",
+    "Whatever you decide is fine, I guess, bye.",
+  ],
+  signoff: ["Best wishes,", "Yours faithfully,", "Yours truly, The Management"],
+  name: ["Wei Ming", "Mr Tan Wei Ming", "Your classmate from 5IG"],
+};
+
 export const DEMO_CASES = [
   {
     id: "demo-1",
@@ -71,83 +212,16 @@ export const DEMO_CASES = [
     ],
     ownContentPrompt:
       "Suggest ONE way you could still help with the Recycling Fair, even though you can't be there on the day itself.",
+    hunchHint: "You cannot attend on the day — so what could you do BEFORE the Fair? Look at the sign-up deadline in the notice.",
     ownContentKeywords: [
       ["donate", "contribute items", "give recyclables", "bring recyclable items"],
       ["poster", "posters", "banner", "design", "publicity"],
       ["help before", "prepare", "pack", "set up", "sort at home", "sort in advance"],
       ["social media", "promote", "spread the word", "announce", "advertise"],
     ],
-    components: [
-      {
-        key: "salutation", label: "Salutation",
-        options: [
-          { id: "a", text: "Dear Mr Kumar," },
-          { id: "b", text: "Hi Kumar," },
-          { id: "c", text: "Dear Sir/Madam," },
-          { id: "d", text: "Dear Vice-Principal," },
-        ],
-      },
-      {
-        key: "purpose", label: "Purpose",
-        options: [
-          { id: "a", text: "I am writing to let you know that I am unable to attend the Recycling Fair on 14 March, and to suggest another way I could help." },
-          { id: "b", text: "I am writing to invite you to my birthday party next month." },
-          { id: "c", text: "I am writing to complain that the Recycling Fair was cancelled." },
-          { id: "d", text: "Just letting you know I probably won't come, no biggie." },
-        ],
-      },
-      {
-        key: "keyinfo1", label: "Key information — your situation",
-        options: [
-          { id: "a", text: "Unfortunately, I have a family commitment on that day and will not be able to attend." },
-          { id: "b", text: "I simply do not feel like attending the Fair." },
-          { id: "c", text: "The Fair sounds boring so I will not be going." },
-          { id: "d", text: "I will be attending another school's fair instead." },
-        ],
-      },
-      {
-        key: "keyinfo2", label: "Key information — your suggestion",
-        options: [
-          { id: "a", text: "I would like to help by preparing publicity posters beforehand and sorting recyclable items in advance." },
-          { id: "b", text: "I do not think I can help in any other way." },
-          { id: "c", text: "Perhaps someone else can just do my part for me." },
-          { id: "d", text: "I will think about it and let you know never." },
-        ],
-      },
-      {
-        key: "keyinfo3", label: "Key information — logistics",
-        options: [
-          { id: "a", text: "I understand volunteers are needed to man the booths and that sign-ups close on 7 March, so I hope this suggestion still reaches you in time." },
-          { id: "b", text: "I heard the sign-up deadline was actually next year." },
-          { id: "c", text: "I am not sure if sign-ups are even necessary." },
-          { id: "d", text: "Please cancel the Fair since I cannot make it." },
-        ],
-      },
-      {
-        key: "filler", label: "Additional context",
-        options: [
-          { id: "a", text: "I have always enjoyed helping out at school events and hope to contribute meaningfully despite my absence." },
-          { id: "b", text: "By the way, did you catch the football match last night?" },
-          { id: "c", text: "This is the third time I have missed a school event this year." },
-          { id: "d", text: "I am also writing to ask for extra homework." },
-        ],
-      },
-      {
-        key: "signoff", label: "Sign-off",
-        options: [
-          { id: "a", text: "Yours sincerely," },
-          { id: "b", text: "Yours faithfully," },
-          { id: "c", text: "Love," },
-          { id: "d", text: "Best wishes always forever," },
-        ],
-      },
-    ],
-    answerKey: {
-      components: { salutation: "a", purpose: "a", keyinfo1: "a", keyinfo2: "a", keyinfo3: "a", filler: "a", signoff: "a" },
-      paragraphBreaks: ["purpose", "keyinfo1", "filler", "signoff"],
-    },
-    model_letter:
-      "Dear Mr Kumar,\n\nI am writing to let you know that I am unable to attend the Recycling Fair on 14 March, and to suggest another way I could help.\n\nUnfortunately, I have a family commitment on that day and will not be able to attend. I would like to help by preparing publicity posters beforehand and sorting recyclable items in advance. I understand volunteers are needed to man the booths and that sign-ups close on 7 March, so I hope this suggestion still reaches you in time.\n\nI have always enjoyed helping out at school events and hope to contribute meaningfully despite my absence.\n\nYours sincerely,\nA concerned pupil",
+    components: buildComponents(PARTS_1),
+    answerKey: { components: Object.fromEntries(ORDER.map((k) => [k, "a"])), paragraphBreaks: BREAKS },
+    model_letter: modelLetterFrom(PARTS_1, BREAKS),
   },
   {
     id: "demo-2",
@@ -172,109 +246,14 @@ export const DEMO_CASES = [
     ],
     ownContentPrompt:
       "Suggest ONE fun thing you and Wei Jie could do together before or after Sports Day.",
+    hunchHint: "Think about getting ready for the races together, or celebrating afterwards.",
     ownContentKeywords: [
-      ["practice", "train", "warm up", "run together"],
+      ["practice", "practise", "train", "warm up", "run together"],
       ["cheer", "support", "watch together"],
       ["ice cream", "hang out", "celebrate", "photo together"],
     ],
-    components: [
-      {
-        key: "salutation", label: "Salutation",
-        options: [
-          { id: "a", text: "Hi Wei Jie," },
-          { id: "b", text: "Dear Sir/Madam," },
-          { id: "c", text: "To whom it may concern," },
-          { id: "d", text: "Dear Mr Wei Jie," },
-        ],
-      },
-      {
-        key: "purpose", label: "Purpose",
-        options: [
-          { id: "a", text: "I heard you missed the announcement about Sports Day, so I thought I'd fill you in and see if you want to join our house group!" },
-          { id: "b", text: "I am writing to formally notify you of an upcoming event." },
-          { id: "c", text: "I am writing to complain about missing you at school." },
-          { id: "d", text: "This is to inform you that Sports Day has been cancelled." },
-        ],
-      },
-      {
-        key: "keyinfo1", label: "Key information — when & where",
-        options: [
-          { id: "a", text: "It's happening this Friday, 21 March, from 2 to 5pm at the School Field." },
-          { id: "b", text: "It's happening sometime next year, not sure when." },
-          { id: "c", text: "It got moved to another school entirely." },
-          { id: "d", text: "It's actually just a normal PE lesson." },
-        ],
-      },
-      {
-        key: "keyinfo2", label: "Key information — what to bring",
-        options: [
-          { id: "a", text: "Don't forget to bring your water bottle and your house T-shirt!" },
-          { id: "b", text: "You don't need to bring anything at all." },
-          { id: "c", text: "You should bring your textbooks just in case." },
-          { id: "d", text: "Bring an umbrella because it will definitely rain." },
-        ],
-      },
-      {
-        key: "filler", label: "Additional context",
-        options: [
-          { id: "a", text: "There's also a class photo right after the closing ceremony, so try not to be late!" },
-          { id: "b", text: "Also, I heard the school canteen is closed forever." },
-          { id: "c", text: "By the way, I'm changing schools next week." },
-          { id: "d", text: "This has nothing to do with Sports Day but guess what happened yesterday." },
-        ],
-      },
-      {
-        key: "signoff", label: "Sign-off",
-        options: [
-          { id: "a", text: "See you there!" },
-          { id: "b", text: "Yours faithfully," },
-          { id: "c", text: "Yours sincerely," },
-          { id: "d", text: "Regards, Management" },
-        ],
-      },
-    ],
-    answerKey: {
-      components: { salutation: "a", purpose: "a", keyinfo1: "a", keyinfo2: "a", filler: "a", signoff: "a" },
-      paragraphBreaks: ["purpose", "keyinfo1", "filler"],
-    },
-    model_letter:
-      "Hi Wei Jie,\n\nI heard you missed the announcement about Sports Day, so I thought I'd fill you in and see if you want to join our house group! It's happening this Friday, 21 March, from 2 to 5pm at the School Field.\n\nDon't forget to bring your water bottle and your house T-shirt! There's also a class photo right after the closing ceremony, so try not to be late!\n\nSee you there!",
+    components: buildComponents(PARTS_2),
+    answerKey: { components: Object.fromEntries(ORDER.map((k) => [k, "a"])), paragraphBreaks: BREAKS },
+    model_letter: modelLetterFrom(PARTS_2, BREAKS),
   },
 ];
-
-// v1.6: normalise the built-in tutorial cases to the same 13-part Step 4
-// structure used by teacher-created cases.
-function demoOption(key, correct, d1, d2) {
-  return { key, label: ({
-    salutation: "Salutation (Audience)", greeting: "Greeting / Introduction", purpose: "Purpose", context: "Context",
-    keyinfo1: "Key information 1", keyinfo2: "Key information 2", keyinfo3: "Key information 3", keyinfo4: "Key information 4", keyinfo5: "Key information 5",
-    ownIdea: "Own idea", closing: "Closing sentence", signoff: "Sign-off", name: "Name"
-  })[key], options: [{id:"a",text:correct},{id:"b",text:d1},{id:"c",text:d2}] };
-}
-
-function upgradeDemoCase(c) {
-  const old = Object.fromEntries((c.components || []).map(x => [x.key, x]));
-  const pts = (c.stimulusPoints || []).filter(x => x.relevant).map(x => x.text);
-  const formal = !!c.formal;
-  const opt = (key, fallback, d1, d2) => { const x = old[key]; return demoOption(key, x?.options?.find(o => o.id === "a")?.text || fallback, x?.options?.find(o => o.id === "b")?.text || d1, x?.options?.find(o => o.id === "c")?.text || d2); };
-  c.components = [
-    opt("salutation", formal ? "Dear Sir/Madam," : "Hi there,", "Dear friend,", "Hey everyone,"),
-    opt("greeting", formal ? "I hope you are well.": "How are you? I hope you have been well.", formal ? "Hey! How's it going?" : "Dear Sir/Madam, I write regarding this matter.", "I hereby wish to inform you of the following."),
-    opt("purpose", "I am writing to tell you about this situation.", "I am writing about an unrelated matter.", "I am writing to complain about the weather."),
-    opt("context", "I thought I should explain the situation so you know what happened.", "This has nothing to do with the event.", "I have lots of homework tonight."),
-    opt("keyinfo1", pts[0] || "The first important detail is included in the notice.", "The first detail is not needed.", "The first detail is completely different."),
-    opt("keyinfo2", pts[1] || "The second important detail is included in the notice.", "The second detail is not needed.", "The second detail is completely different."),
-    opt("keyinfo3", pts[2] || "The third important detail is included in the notice.", "The third detail is not needed.", "The third detail is completely different."),
-    opt("keyinfo4", pts[3] || "The fourth important detail is included in the notice.", "The fourth detail is not needed.", "The fourth detail is completely different."),
-    opt("keyinfo5", pts[4] || "The fifth important detail is included in the notice.", "The fifth detail is not needed.", "The fifth detail is completely different."),
-    opt("ownIdea", (c.ownContentKeywords?.[0]?.[0]) || "suggest a helpful idea", "offer another practical way to help", "contribute in another suitable way"),
-    opt("closing", formal ? "Thank you for considering my suggestion." : "Hope to hear from you soon!", "This is the end of an unrelated topic.", "I am not sure what else to say."),
-    opt("signoff", formal ? "Yours sincerely," : "Best,", "Yours faithfully,", "Love and hugs forever,"),
-    opt("name", formal ? "Wei Ming Tan" : "Wei Ming", formal ? "Wei Ming" : "Wei Ming Tan", "Mr Tan")
-  ];
-  c.answerKey = { components: Object.fromEntries(c.components.map(x => [x.key, "a"])), paragraphBreaks: c.answerKey?.paragraphBreaks || ["purpose", "keyinfo1", "closing", "signoff"] };
-  return c;
-}
-
-for (const c of DEMO_CASES) upgradeDemoCase(c);
-

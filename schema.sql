@@ -25,6 +25,10 @@ CREATE TABLE IF NOT EXISTS cases (
   created_by    TEXT,             -- username of the teacher/admin who built it
   approved_by   TEXT,             -- username of whoever published it (may differ from created_by)
   approved_at   TEXT,             -- when it was published
+  required_text  TEXT,            -- v1.12: "required content points" text shown in Step 2
+  required_image TEXT,            -- v1.12: optional picture (base64 data URL) for those points
+  hunch_hint     TEXT,            -- v1.12: optional Step 3 hint; empty/NULL => pupils get no Hint button
+  build_flags    TEXT,            -- v1.12: JSON {failedParts:[...]} = parts the AI builder failed on
   created_at    TEXT DEFAULT (datetime('now'))
 );
 -- If upgrading an existing DB, run these three once (existing cases were
@@ -34,6 +38,12 @@ CREATE TABLE IF NOT EXISTS cases (
 -- ALTER TABLE cases ADD COLUMN approved_by TEXT;
 -- ALTER TABLE cases ADD COLUMN approved_at TEXT;
 -- UPDATE cases SET approved_by = 'legacy', approved_at = created_at WHERE status = 'published' AND approved_by IS NULL;
+-- v1.12 adds four more columns. The Worker adds them automatically on the
+-- first request, so you normally don't need to do anything. Manual form:
+-- ALTER TABLE cases ADD COLUMN required_text TEXT;
+-- ALTER TABLE cases ADD COLUMN required_image TEXT;
+-- ALTER TABLE cases ADD COLUMN hunch_hint TEXT;
+-- ALTER TABLE cases ADD COLUMN build_flags TEXT;
 
 CREATE TABLE IF NOT EXISTS leaderboard (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,8 +55,11 @@ CREATE TABLE IF NOT EXISTS leaderboard (
   max_score   INTEGER NOT NULL DEFAULT 100,
   breakdown   TEXT,               -- JSON score breakdown, for the pupil's own review
   device_id   TEXT NOT NULL DEFAULT '', -- random id stored in the pupil's browser — disambiguates same-name pupils
+  hide_on_board INTEGER NOT NULL DEFAULT 0, -- v1.14: pupil chose to hide their name from the Wall of Fame
   created_at  TEXT DEFAULT (datetime('now'))
 );
+-- v1.14 adds hide_on_board. The Worker adds it automatically; manual form:
+-- ALTER TABLE leaderboard ADD COLUMN hide_on_board INTEGER NOT NULL DEFAULT 0;
 -- If upgrading an existing DB, run these three once:
 -- ALTER TABLE leaderboard ADD COLUMN player_class TEXT NOT NULL DEFAULT '';
 -- ALTER TABLE leaderboard ADD COLUMN max_score INTEGER NOT NULL DEFAULT 100;
@@ -148,3 +161,48 @@ CREATE TABLE IF NOT EXISTS ai_call_log (
   created_at  TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_ai_call_log_created ON ai_call_log(created_at);
+
+
+-- v1.12: every pupil submission, kept so teachers can review it, see which
+-- AI-marked parts FAILED (needs_review = 1), and override the score.
+-- final_* / override_* are NULL until a teacher grades it; the automatic
+-- score is never overwritten (ai_*), so "Revert" is always possible.
+CREATE TABLE IF NOT EXISTS submissions (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  leaderboard_id  INTEGER,
+  case_id         TEXT NOT NULL,
+  case_title      TEXT NOT NULL,
+  player_name     TEXT NOT NULL,
+  player_class    TEXT NOT NULL DEFAULT '',
+  device_id       TEXT NOT NULL DEFAULT '',
+  own_content     TEXT,
+  letter          TEXT,
+  letter_edited   INTEGER NOT NULL DEFAULT 0,
+  max_score       INTEGER NOT NULL,
+  ai_score        INTEGER NOT NULL,
+  ai_breakdown    TEXT NOT NULL,
+  ai_failures     TEXT,
+  needs_review    INTEGER NOT NULL DEFAULT 0,
+  level           INTEGER NOT NULL DEFAULT 1,   -- v1.14 writing ladder: 1 Guided, 2 Starters, 3 Independent
+  moe_json        TEXT,                         -- v1.14 exam-style ESTIMATE {taskFulfilment/6, languageOrg/8}
+  error_flags     TEXT,                         -- v1.14 JSON array of detected letter mistakes
+  final_moe_json  TEXT,                         -- v1.14 teacher-set exam-style scores (NULL until graded)
+  final_score     INTEGER,
+  final_breakdown TEXT,
+  override_comment TEXT,
+  overridden_by   TEXT,
+  overridden_at   TEXT,
+  created_at      TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_submissions_review ON submissions(needs_review, created_at);
+CREATE INDEX IF NOT EXISTS idx_submissions_class ON submissions(player_class);
+CREATE INDEX IF NOT EXISTS idx_submissions_lb ON submissions(leaderboard_id);
+
+-- v1.14: optional switch — unlock all three writing levels for every pupil.
+INSERT OR IGNORE INTO app_settings (key, value) VALUES ('all_levels_unlocked', '0');
+-- v1.14 adds level, moe_json, error_flags, final_moe_json to submissions. The Worker adds
+-- them automatically on the first request; manual form:
+-- ALTER TABLE submissions ADD COLUMN level INTEGER NOT NULL DEFAULT 1;
+-- ALTER TABLE submissions ADD COLUMN moe_json TEXT;
+-- ALTER TABLE submissions ADD COLUMN error_flags TEXT;
+-- ALTER TABLE submissions ADD COLUMN final_moe_json TEXT;

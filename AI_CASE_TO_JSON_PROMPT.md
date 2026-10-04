@@ -56,9 +56,7 @@ Nothing else.
     the pupil's original idea, e.g. `[["donate","give"],["poster","sign"]]`.
 12. Keep the case content suitable for Primary 5/6 English situational
     writing.
-13. Distractors must be genuinely plausible enough to test understanding,
-    but clearly wrong because they don't suit the situation, audience,
-    register, or required information.
+13. Distractors must be REALISTIC mistakes a Primary 6 pupil could actually make, never silly or rude. For each key-information part: one option with a single fact changed (a different date, time, place, name or number) and one vaguer option that leaves the key fact out. For the salutation and sign-off: use the wrong register or the wrong pairing (Dear Mr/Ms Name goes with Yours sincerely; Dear Sir/Madam goes with Yours faithfully). For the own idea: one idea that cannot work in this situation (for example it needs the pupil to be present when they cannot be) and one idea unrelated to the clues in the notice.
 14. `"modelLetter"` must be a coherent full reference answer that uses
     the intended register and naturally includes all 5 key information
     points plus the own-content idea.
