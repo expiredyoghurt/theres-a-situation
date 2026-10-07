@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS cases (
   image_data    TEXT,              -- base64 data URL of the stimulus graphic
   task_text     TEXT NOT NULL,     -- the situational writing task/rubric text
   task_chunks   TEXT NOT NULL,     -- JSON array [{id,text,type}] type = purpose|audience|context|other
-  formal        INTEGER NOT NULL DEFAULT 1, -- 1 = formal register, 0 = informal
+  formal        INTEGER NOT NULL DEFAULT 1, -- legacy letter-register flag: 1 = formal, 0 = informal (derived from `format`)
+  format        TEXT,              -- v1.15: formal_letter | informal_letter | article. NULL on old rows; the Worker backfills it from `formal`
   stimulus_points TEXT NOT NULL,   -- JSON array [{id,text,relevant}]
   own_content_prompt  TEXT,        -- the "own idea" question shown to pupils
   own_content_keywords TEXT,       -- JSON array of keyword-groups (arrays of synonyms)
@@ -38,6 +39,9 @@ CREATE TABLE IF NOT EXISTS cases (
 -- ALTER TABLE cases ADD COLUMN approved_by TEXT;
 -- ALTER TABLE cases ADD COLUMN approved_at TEXT;
 -- UPDATE cases SET approved_by = 'legacy', approved_at = created_at WHERE status = 'published' AND approved_by IS NULL;
+-- v1.15 adds `format`. The Worker adds it (and backfills it from `formal`) on the first request. Manual form:
+-- ALTER TABLE cases ADD COLUMN format TEXT;
+-- UPDATE cases SET format = CASE WHEN formal = 1 THEN 'formal_letter' ELSE 'informal_letter' END WHERE format IS NULL;
 -- v1.12 adds four more columns. The Worker adds them automatically on the
 -- first request, so you normally don't need to do anything. Manual form:
 -- ALTER TABLE cases ADD COLUMN required_text TEXT;

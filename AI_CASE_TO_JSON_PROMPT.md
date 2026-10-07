@@ -36,10 +36,34 @@ Nothing else.
    `"options"` array.
 4. The pupil-facing UI automatically gives every component a separate
    blank **"write your own"** field. Do not invent a 4th option for that.
-5. `"formal": true` means formal writing; `"formal": false` means
-   informal writing.
-6. For formal writing, use a full first + last name in the `name`
-   component's options. For informal writing, use a first name only.
+5. `"format"` is one of `"formal_letter"`, `"informal_letter"` or
+   `"article"`. (Also send `"formal": true` for a formal letter and
+   `"formal": false` for an informal letter or an article, for older
+   versions of the app.)
+
+   **If the format is `"article"`, the 13 components are different.**
+   Use these in this exact order instead of rule 2's list:
+   `headline`, `byline`, `hook`, `purpose`, `context`, `keyinfo1`,
+   `keyinfo2`, `keyinfo3`, `keyinfo4`, `keyinfo5`, `ownIdea`, `cta`,
+   `thanks`. An article is for a wider audience (schoolmates or
+   neighbours), so it has NO salutation, greeting or sign-off:
+   - `headline`: a short catchy title (no full stop). Wrong options:
+     a dull label ending in a full stop; a long vague title or text-speak.
+   - `byline`: `By First Last` (a FULL name). Wrong options: a first name
+     only; a club or group name.
+   - `hook`: one engaging opening sentence, ideally a question.
+   - `purpose`, `context`, `keyinfo1`-`keyinfo5`, `ownIdea`: as for a letter,
+     but written to the readers, with linking words (Furthermore,
+     Moreover) in the key-information sentences.
+   - `cta`: a call to action that says exactly what readers should do.
+     Wrong options: vague ("Maybe come if you can") or bossy.
+   - `thanks`: thanks the readers for reading. Wrong options: abrupt, or
+     text-speak.
+   The `"modelLetter"` for an article is the model ARTICLE: headline on
+   line 1, byline on line 2, then three paragraphs (opening, body, closing),
+   about 150-170 words, friendly in tone with proper grammar.
+6. For a formal letter, use a full first + last name in the `name`
+   component's options. For an informal letter, use a first name only.
 7. For formal sign-off, suitable choices include `Yours faithfully,`,
    `Yours sincerely,` and `Best regards,`. For informal writing, use
    natural informal choices.
@@ -69,6 +93,7 @@ Nothing else.
 ```json
 {
   "title": "string",
+  "format": "formal_letter | informal_letter | article",
   "formal": true,
   "taskText": "the full task prompt exactly as given to pupils",
   "taskChunks": [
@@ -103,8 +128,8 @@ Nothing else.
 Title:
 [INSERT TITLE]
 
-Formal or informal:
-[INSERT FORMAL OR INFORMAL]
+Format (FORMAL LETTER, INFORMAL LETTER or ARTICLE):
+[INSERT FORMAT]
 
 Task prompt:
 [INSERT FULL TASK PROMPT]

@@ -30,15 +30,16 @@ Your job is to return a **single executable SQLite/D1 SQL file** that inserts ex
 5. Every component must contain **exactly 3 options** with ids `a`, `b`, `c`.
 6. The `answer_key.components` object must identify the correct option id for every one of the 13 components.
 7. The pupil-facing UI automatically provides a separate blank **"write your own"** text field for every component. Do **not** invent a fourth stored option for that field.
-8. `formal = 1` means formal writing; `formal = 0` means informal writing.
-9. For formal writing, use a full first + last name in the `name` component. For informal writing, use a first name only.
-10. For formal sign-off, suitable choices include `Yours faithfully,`, `Yours sincerely,` and `Best regards,`. For informal writing, use natural informal choices.
+8. `format` is REQUIRED and must never be NULL or omitted (a missing format is treated as an informal letter). It is `'formal_letter'`, `'informal_letter'` or `'article'`; also set `formal = 1` for a formal letter and `formal = 0` for an informal letter or an article.
+   **For an article, replace the 13 component keys in rule 4 with, in this order:** `headline`, `byline`, `hook`, `purpose`, `context`, `keyinfo1`, `keyinfo2`, `keyinfo3`, `keyinfo4`, `keyinfo5`, `ownIdea`, `cta`, `thanks` (no salutation, greeting, closing, sign-off or name). The byline is `By First Last` (a FULL name; the wrong options are a first name only and a group name). `answer_key.paragraphBreaks` for an article should be `["hook","keyinfo1","cta"]`. The model letter is the model ARTICLE (headline, byline, then three paragraphs, about 150-170 words).
+9. For a formal letter, use a full first + last name in the `name` component. For an informal letter, use a first name only.
+10. For formal sign-off, suitable choices include `Yours faithfully,`, `Yours sincerely,`, `Best regards,` and `Written by` (the last is accepted as a sign-off line, e.g. for a formal report or article-style piece). For informal writing, use natural informal choices.
 11. The 5 `keyinfo` components must match the 5 required facts in `stimulus_points`.
 12. `stimulus_points` must contain the 5 required facts with `relevant: true`, plus 2 plausible but unnecessary distractor facts with `relevant: false`.
 13. `task_chunks` should identify the purpose, audience and context where possible. Use objects shaped like `{"id":"t1","text":"...","type":"purpose"}`.
 14. `own_content_keywords` must be valid JSON containing keyword groups useful for marking the pupil's original idea, for example `[["donate","give"],["poster","sign"]]`.
 15. `answer_key.paragraphBreaks` should normally be `[`"purpose"`, `"keyinfo1"`, `"closing"`, `"signoff"`]` unless the task clearly calls for a different paragraph structure.
-16. Set `status` to **`'published'`** because this file is intended for direct D1 Console import. A teacher should review the case before allowing pupils to use it.
+16. Set `status` to **`'draft'`**. The teacher reviews the case, attaches the picture in the teacher page (Manual backend upload tab) and clicks Publish. Never set `'published'`.
 17. Set `created_by` to `external-ai-import`.
 18. Set `approved_by` to `external-ai-import` and `approved_at` to the current ISO timestamp.
 19. `image_data` should be **NULL**. The teacher will attach the picture later from the Teacher front-end using the case id.
@@ -52,15 +53,15 @@ Your job is to return a **single executable SQLite/D1 SQL file** that inserts ex
 
 Use these columns exactly:
 
-`id, title, image_data, task_text, task_chunks, formal, stimulus_points, own_content_prompt, own_content_keywords, components, answer_key, model_letter, status, created_by, approved_by, approved_at`
+`id, title, image_data, task_text, task_chunks, formal, format, stimulus_points, own_content_prompt, own_content_keywords, components, answer_key, model_letter, status, created_by, approved_by, approved_at`
 
 ## CASE BRIEF
 
 Title:
 [INSERT TITLE]
 
-Formal or informal:
-[INSERT FORMAL OR INFORMAL]
+Format (FORMAL LETTER, INFORMAL LETTER or ARTICLE):
+[INSERT FORMAT]
 
 Task prompt:
 [INSERT FULL TASK PROMPT]

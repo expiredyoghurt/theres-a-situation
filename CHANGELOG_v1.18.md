@@ -1,0 +1,5 @@
+# v1.18 — teacher page tabs, case cards, evidence photo, gauges
+- **Teacher page tabs:** Results (grading, class overview) · Cases (file manager + new-case form) · Settings (rubric, AI health, student/tutorial/level switches, teacher accounts) · Manual backend upload. The last tab used is remembered; arrow keys move between tabs; the tab bar is sticky and scrolls sideways on phones.
+- **Case cards:** thumbnail (or a "No picture yet" placeholder), colour-coded format stamp, Published/Draft chip, and a ✔ ready / ⚠ n to check / ✖ n problems chip from the structure validator. The long "Structure check passed" lines are gone; only problems and warnings are listed.
+- **Pupil side:** the stimulus picture is now a taped "evidence photo" you can tap (or press Enter) to enlarge, Esc to close; the exam-style estimate is shown as two ring gauges (colour + number + label, so not colour-only); the rank badge uses an SVG shield instead of an emoji.
+- Browser-tested (headless Chromium, desktop and phone): `tests/ui/admin.ui.mjs`, `tests/ui/step4.ui.mjs`.

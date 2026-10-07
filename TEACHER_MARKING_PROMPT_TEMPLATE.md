@@ -1,8 +1,11 @@
-# Marking prompt template (for any external AI), v1.14 scheme
+# Marking prompt template (for any external AI), v1.15 scheme
 
 In the app, **Pupil submissions & grading → open a submission → 📋 Copy marking prompt** fills this in for you. Use this template only for work that isn't in the app. Replace every `[[…]]`. Don't include the pupil's name or class. If a detail is unavailable, write `[not available]` and fill it in by hand before sending.
 
-The AI's output is a **draft**. Read it off into the score boxes in the app and enter your own comment. The exam-style /14 figure (Task Fulfilment /6 + Language & Organisation /8) is an estimate, because SEAB publishes no per-descriptor scheme.
+The AI's output is a **draft**. Read it off into the score boxes in the app and enter your own comment. The exam-style /14 figure (Task Fulfilment /6 + Language & Organisation /8) is an estimate, because SEAB publishes no per-descriptor scheme. From v1.15 the app converts these judgements with the scheme below (supplied by the teacher), for letters and articles alike:
+
+- **Task Fulfilment /6** (content points = every required fact + the pupil's own idea; PAC = purpose, audience, context): 6 = all content points accurate AND all of PAC accurate; 5 = all content but one PAC error, OR one content point missing with no PAC error; 3-4 = otherwise, depending on content and PAC; 1-2 = fewer than 3 content points, or no accurate PAC.
+- **Language & Organisation /8** (Language 0-5 + Organisation 0-3): 8 = perfect language and excellent organisation; at most 6 if there is no paragraphing.
 
 ```
 You are an experienced Primary 6 English teacher in Singapore, marking a pupil's SITUATIONAL WRITING task in the style of the PSLE. Mark fairly and consistently, as a careful human examiner would. Mark ONLY the items listed below.
@@ -11,7 +14,7 @@ You are an experienced Primary 6 English teacher in Singapore, marking a pupil's
 Question prompt shown to the pupil:
 [[PASTE THE TASK / QUESTION PROMPT]]
 
-Letter type: [[FORMAL or INFORMAL]]
+Writing format: [[FORMAL LETTER/EMAIL, INFORMAL LETTER/EMAIL, or ARTICLE for a wider audience (e.g. schoolmates). An article needs NO salutation or sign-off; it should have a headline, a byline with the writer's full name, an engaging opening, points woven into flowing paragraphs, a call to action and thanks to the readers. Tone: friendly and enthusiastic, but with proper grammar (no text-speak).]]
 
 Required facts from the notice (the letter must state these accurately):
 [[PASTE THE KEY INFORMATION POINTS, ONE PER LINE, NUMBERED 1., 2., ...]]
@@ -32,13 +35,13 @@ Pupil's own idea (typed separately):
 [[PASTE THE PUPIL'S OWN IDEA]]
 PUPIL_TEXT>>>
 
-Pupil's final letter:
+Pupil's final letter or article:
 <<<PUPIL_TEXT
 [[PASTE THE PUPIL'S LETTER]]
 PUPIL_TEXT>>>
 
 === WHAT TO MARK ===
-A. PURPOSE, AUDIENCE, CONTEXT (true/false each): does the letter clearly show the purpose of writing, address the right audience in a suitable tone and register, and fit the context given in the question prompt?
+A. PURPOSE, AUDIENCE, CONTEXT (true/false each): does the letter or article clearly show the purpose of writing, address the right audience in a suitable tone and register, and fit the context given in the question prompt?
 
 B. KEY FACTS: for each numbered required fact, say whether the letter states it correctly (OK), leaves it out (MISSING) or gets it wrong (WRONG). Do not penalise different wording that is accurate.
 

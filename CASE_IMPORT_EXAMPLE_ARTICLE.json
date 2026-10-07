@@ -1,0 +1,196 @@
+{
+  "title": "Garden Club Open House (article example)",
+  "format": "article",
+  "formal": false,
+  "taskText": "You are a member of your school's Garden Club and you saw this notice about the Garden Club Open House. Write an article for the school newsletter to encourage your schoolmates to come. Use the notice for details, and include one idea of your own on how pupils can keep their seedlings healthy at home.",
+  "taskChunks": [
+    {
+      "text": "You are a member of your school's Garden Club and you saw this notice about the Garden Club Open House.",
+      "type": "context"
+    },
+    {
+      "text": "Write an article for the school newsletter",
+      "type": "audience"
+    },
+    {
+      "text": "to encourage your schoolmates to come.",
+      "type": "purpose"
+    },
+    {
+      "text": "Use the notice for details,",
+      "type": "other"
+    },
+    {
+      "text": "and include one idea of your own on how pupils can keep their seedlings healthy at home.",
+      "type": "other"
+    }
+  ],
+  "keyInfo": [
+    "Date: Wednesday, 18 March, 2pm to 4pm",
+    "Venue: Rooftop Garden, Level 5",
+    "Plant your own seedling and taste fresh herbs",
+    "Bring a recycled pot or container to take the seedling home",
+    "Register with Ms Lim by 11 March"
+  ],
+  "distractorStimulusPoints": [
+    "The Garden Club won the Green School Award 2024",
+    "Free lemongrass tea for the first 40 visitors"
+  ],
+  "ownContentPrompt": "Suggest ONE idea on how pupils can keep their seedlings healthy once they have taken them home in a recycled pot.",
+  "ownContentIdeas": [
+    "set a daily phone reminder to water it",
+    "keep it on a sunny window sill",
+    "record its growth in a journal"
+  ],
+  "ownContentKeywords": [
+    [
+      "water",
+      "watering",
+      "reminder",
+      "alarm",
+      "daily"
+    ],
+    [
+      "sunlight",
+      "sunny",
+      "window",
+      "balcony",
+      "sun"
+    ],
+    [
+      "journal",
+      "record",
+      "photo",
+      "track growth",
+      "diary"
+    ],
+    [
+      "fertiliser",
+      "fertilizer",
+      "compost",
+      "rice water",
+      "tea leaves"
+    ]
+  ],
+  "hunchHint": "The notice says pupils take the seedling home in a recycled pot. What does a young plant need every day?",
+  "modelLetter": "Come and Grow with Us at the Garden Club Open House!\nBy Wei Ming Tan\n\nHave you ever wondered how the herbs and vegetables on your plate begin their journey? I am excited to share the details of our Garden Club Open House and to invite every one of you to take part. As a proud member of the Garden Club, I have spent many afternoons preparing the Rooftop Garden for this special event.\n\nThe Open House will be held on Wednesday, 18 March, from 2pm to 4pm. Furthermore, it will take place at the Rooftop Garden on Level 5. Visitors can plant their very own seedling and taste fresh herbs picked from our garden. Moreover, please remember to bring a recycled pot or container so that you can take your seedling home. To take part, simply register with Ms Lim in the Staff Room by 11 March. After taking your seedling home, you can set a daily phone reminder to water it so that it grows tall and strong.\n\nSo why not join us at the Rooftop Garden and register with Ms Lim today? Thank you for reading, and I hope to see you there!",
+  "components": [
+    {
+      "label": "Headline",
+      "options": [
+        "Come and Grow with Us at the Garden Club Open House!",
+        "Garden Club Open House Details.",
+        "A Very Long Notice About Something That Is Happening At School Soon"
+      ],
+      "correctIndex": 0
+    },
+    {
+      "label": "Byline (your full name)",
+      "options": [
+        "By Wei Ming Tan",
+        "By Wei Ming",
+        "By A Member Of The Garden Club"
+      ],
+      "correctIndex": 0
+    },
+    {
+      "label": "Opening hook",
+      "options": [
+        "Have you ever wondered how the herbs and vegetables on your plate begin their journey?",
+        "The Garden Club is having an Open House.",
+        "Gardening may sound boring, but you should still read this."
+      ],
+      "correctIndex": 0
+    },
+    {
+      "label": "Purpose",
+      "options": [
+        "I am excited to share the details of our Garden Club Open House and to invite every one of you to take part.",
+        "I am writing to complain that not enough pupils know about the Garden Club.",
+        "I want to talk about the garden, the school and a few other things."
+      ],
+      "correctIndex": 0
+    },
+    {
+      "label": "Context",
+      "options": [
+        "As a proud member of the Garden Club, I have spent many afternoons preparing the Rooftop Garden for this special event.",
+        "As a member of the Library Club, I have spent many afternoons preparing the library for a special event.",
+        "I have been busy with my homework, so I only have a little to say about it."
+      ],
+      "correctIndex": 0
+    },
+    {
+      "label": "Key information 1",
+      "options": [
+        "The Open House will be held on Wednesday, 18 March, from 2pm to 4pm.",
+        "The Open House will be held on Wednesday, 19 March, from 2pm to 4pm.",
+        "The Open House will be held on a Wednesday afternoon in March, but I did not note the exact date."
+      ],
+      "correctIndex": 0
+    },
+    {
+      "label": "Key information 2",
+      "options": [
+        "Furthermore, it will take place at the Rooftop Garden on Level 5.",
+        "Furthermore, it will take place at the School Hall on Level 1.",
+        "Furthermore, it will take place somewhere in the school building."
+      ],
+      "correctIndex": 0
+    },
+    {
+      "label": "Key information 3",
+      "options": [
+        "Visitors can plant their very own seedling and taste fresh herbs picked from our garden.",
+        "Visitors can water the plants and buy fresh vegetables grown by our members.",
+        "Visitors can try a few gardening activities, although I am not sure which ones."
+      ],
+      "correctIndex": 0
+    },
+    {
+      "label": "Key information 4",
+      "options": [
+        "Moreover, please remember to bring a recycled pot or container so that you can take your seedling home.",
+        "Moreover, please remember to buy a brand new pot from the shop so that you can take your seedling home.",
+        "Moreover, please bring something to carry your seedling in, whatever you can find."
+      ],
+      "correctIndex": 0
+    },
+    {
+      "label": "Key information 5",
+      "options": [
+        "To take part, simply register with Ms Lim in the Staff Room by 11 March.",
+        "To take part, simply register with Ms Tan in the Staff Room by 11 March.",
+        "To take part, simply register with a teacher before the event."
+      ],
+      "correctIndex": 0
+    },
+    {
+      "label": "Own idea",
+      "options": [
+        "After taking your seedling home, you can set a daily phone reminder to water it so that it grows tall and strong.",
+        "After taking your seedling home, you can keep it in a dark cupboard so that it stays safe.",
+        "After taking your seedling home, you can plant a tree on the school field instead."
+      ],
+      "correctIndex": 0
+    },
+    {
+      "label": "Call to action",
+      "options": [
+        "So why not join us at the Rooftop Garden and register with Ms Lim today?",
+        "I hope many of you will feel like coming along someday.",
+        "You must register today or you will be sorry."
+      ],
+      "correctIndex": 0
+    },
+    {
+      "label": "Thanks to readers",
+      "options": [
+        "Thank you for reading, and I hope to see you there!",
+        "That is all, bye.",
+        "Thx 4 reading, c u there!"
+      ],
+      "correctIndex": 0
+    }
+  ]
+}

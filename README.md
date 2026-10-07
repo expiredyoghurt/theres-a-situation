@@ -1,10 +1,9 @@
-# Boss! There's a situation! (v1.14)
+# Boss! There's a situation! (v1.15)
 
-> **What's new:** see `CHANGELOG_v1.14.md` (marking now reads the final letter; exam-style estimate; writing ladder; checklist feedback), `CHANGELOG_v1.13.md` (copy-ready marking prompt for external AI) and `CHANGELOG_v1.12.md` (required points, hints, Confirm + editable letter, AI-failure flags, teacher grade override).
+> **What's new:** see `CHANGELOG_v1.15.md` (the **Article** format alongside formal/informal letters, and the Task Fulfilment /6 + Language & Organisation /8 scheme), `CHANGELOG_v1.14.md` (marking now reads the final letter; exam-style estimate; writing ladder; checklist feedback), `CHANGELOG_v1.13.md` (copy-ready marking prompt for external AI) and `CHANGELOG_v1.12.md` (required points, hints, Confirm + editable letter, AI-failure flags, teacher grade override).
 
 A detective-themed game that gamifies the PSLE English **Situational Writing**
-task (Purpose / Audience / Context, key information, and formal vs. informal
-letter/email writing), based on the step-by-step process described in
+task (Purpose / Audience / Context, key information, and **formal letters, informal letters and articles**), based on the step-by-step process described in
 [Lil' but Mighty's situational writing guide](https://lilbutmightyenglish.com/blog/situational-writing-step-by-step-plus-free-revision-card/).
 
 Pupils play through 5 stages per case:
@@ -62,12 +61,18 @@ boss-theres-a-situation/
   schema.sql            - D1 database schema
   worker/
     index.js            - API routes, admin auth, AI calls, submission handling
-    marking.js          - v1.14 pure marking engine (letter analysis, MOE-style estimate, prompts)
+    marking.js          - pure marking engine (letter + article analysis, exam-style estimate, prompts)
     demoCases.js         - Two built-in tutorial cases (always playable)
   public/
     index.html           - The game (pupil-facing)
     admin.html            - Teacher/admin tool
 ```
+
+## Writing formats (v1.15)
+
+Each case is a **formal letter**, an **informal letter** or an **article** (set with the "Writing format" choice when you build a case). Steps 1-3 (Briefing, Evidence, Hunch) are the same for all three. Step 4 has 13 parts in every format, but an article's parts are: Headline, Byline (full name), Opening hook, Purpose, Context, Key information 1-5, Own idea, Call to action, Thanks to readers. Articles need no salutation or sign-off; headline and byline can sit under the title, or the byline can come at the end, or a "Dear Schoolmates," opening with a closing signature is accepted. Article format checks, flags and "Fix this one thing" cards are described in `CHANGELOG_v1.15.md`. Three tutorial cases are built in: the Recycling Fair (formal), Sports Day Mix-up (informal) and Garden Club Open House (article). `CASE_IMPORT_EXAMPLE_ARTICLE.json` shows the JSON import for an article.
+
+The exam-style estimate (Task Fulfilment /6 + Language & Organisation /8) uses the teacher-supplied scheme: 6/6 needs every content point (including the pupil's own idea) and accurate purpose, audience and context; 5/6 is one slip; 3-4/6 otherwise; 1-2/6 for fewer than 3 content points or no accurate PAC. Language & Organisation is 8 for perfect language and excellent organisation, capped at 6 with no paragraphing.
 
 ## Deploying to Cloudflare
 
@@ -155,7 +160,7 @@ free tier — this deployment should never incur an AI inference charge:**
    either `openrouter/free` or ends in the `:free` variant suffix (e.g.
    `meta-llama/llama-3.2-3b-instruct:free`) — any other model id is
    silently replaced with `openrouter/free` before the request goes out
-   (see `isFreeOpenRouterModel()` in `worker/index.js`), so a paid model
+   (see `isFreeOpenRouterModel()` in `worker/ai.js`), so a paid model
    id can't slip in by accident.
 2. **Groq** — `env.GROQ_API_KEY` (optional). Defaults to
    `openai/gpt-oss-20b`. (Groq's free tier — no credit card required —
@@ -440,10 +445,12 @@ base64 directly in D1 for simplicity, rather than requiring an R2 bucket.
 
 ```bash
 node tests/marking.test.mjs
+node tests/marking_v114.test.mjs
+node tests/marking_v115.test.mjs
 ```
 
 This runs a small, dependency-free test suite directly against the pure
-functions in `worker/index.js` (keyword scoring, similarity scoring,
+functions in the `worker/` modules (keyword scoring, similarity scoring,
 MCQ shuffle/answer-key correctness, letter assembly) — no D1 database,
 no AI provider, no Cloudflare runtime needed. It deliberately doesn't
 cover `submitCase()` end-to-end, since that function mixes D1/AI I/O
@@ -478,3 +485,8 @@ before deploying any change to the scoring functions.
 For cases that you prefer to author outside the app, use `AI_CASE_TO_D1_SQL_PROMPT.md` with an external AI tool to produce a complete executable SQL file. Run the resulting SQL in Cloudflare D1 Console. Set `image_data` to `NULL`; then use the Teacher front-end's **Add picture / Replace picture** control on that case to attach the stimulus image. Attaching or replacing an image returns the case to **Draft**, so it should be reviewed and published again.
 
 The included `CASE_IMPORT_EXAMPLE.sql` shows the expected D1 shape.
+
+
+## Code layout (v2.0)
+`worker/index.js` is only the router. Logic lives in `config.js`, `common.js`, `schema.js` (versioned migrations), `auth.js`, `overview.js`, `casesPublic.js`, `scoring.js`, `ai.js`, `leaderboard.js`, `adminCases.js`, `adminSubmissions.js`, `marking.js` (pure marking functions) and `validate.js` (case structure checks). To change the database, append an entry to `MIGRATIONS` in `schema.js`.
+Tests: `node tests/marking.test.mjs`, `marking_v114`, `marking_v115`, `marking_v116`, `v2_migrations` (Node 22+). Browser tests in `tests/ui/` need playwright: start `node tests/ui/serve.mjs "$PWD" 8791`, then run `step4.ui.mjs` and `admin.ui.mjs`.
