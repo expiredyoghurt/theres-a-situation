@@ -47,6 +47,29 @@ const SPORTS_DAY_SVG = `
   <text x="530" y="358" font-size="11" fill="#7A2E22" text-anchor="middle">will be around!</text>
 </svg>`.trim();
 
+const GARDEN_OPEN_HOUSE_SVG = `
+<svg viewBox="0 0 640 420" xmlns="http://www.w3.org/2000/svg" font-family="Trebuchet MS, Verdana, sans-serif">
+  <rect width="640" height="420" fill="#EAF4DC"/>
+  <rect x="14" y="14" width="612" height="392" fill="none" stroke="#3E7A2E" stroke-width="4" rx="12"/>
+  <text x="320" y="72" text-anchor="middle" font-size="30" font-weight="bold" fill="#2B5A1E">GARDEN CLUB OPEN HOUSE</text>
+  <text x="320" y="98" text-anchor="middle" font-size="14" fill="#4A6B3A" font-style="italic">Riverbank Primary School</text>
+  <g transform="translate(320,160)">
+    <path d="M0 40 V-5" stroke="#3E7A2E" stroke-width="5" fill="none"/>
+    <path d="M0 10 C-35 10 -42 -25 -38 -34 C-8 -34 0 -8 0 10 Z" fill="#7FBF5A" stroke="#3E7A2E" stroke-width="2"/>
+    <path d="M0 -5 C35 -5 42 -40 38 -49 C8 -49 0 -23 0 -5 Z" fill="#9AD16F" stroke="#3E7A2E" stroke-width="2"/>
+    <path d="M-30 40 h60 l-8 22 h-44 z" fill="#C97B3C" stroke="#8A4F1F" stroke-width="2"/>
+  </g>
+  <g font-size="15" fill="#25451A">
+    <text x="90" y="258">&#8226; Date: Wednesday, 18 March, 2pm &#8211; 4pm</text>
+    <text x="90" y="283">&#8226; Venue: Rooftop Garden (Level 5)</text>
+    <text x="90" y="308">&#8226; Plant your own seedling &amp; taste fresh herbs from the garden</text>
+    <text x="90" y="333">&#8226; Bring a recycled pot or container to take your seedling home</text>
+    <text x="90" y="358">&#8226; Register with Ms Lim (Staff Room) by 11 March</text>
+  </g>
+  <text x="535" y="395" font-size="11" fill="#4A6B3A" text-anchor="middle">Winner, Green School Award 2024</text>
+  <text x="130" y="395" font-size="11" fill="#4A6B3A" text-anchor="middle">Free lemongrass tea for 40 visitors</text>
+</svg>`.trim();
+
 // ---------------------------------------------------------------------------
 // v1.14: both tutorial cases are written out in full as the standard 13-part
 // Step 4 structure. Every wrong option is a REALISTIC slip a Primary 6 pupil
@@ -62,20 +85,32 @@ const LABELS = {
 };
 const ORDER = ["salutation", "greeting", "purpose", "context", "keyinfo1", "keyinfo2", "keyinfo3", "keyinfo4", "keyinfo5", "ownIdea", "closing", "signoff", "name"];
 
+// v1.15: the article's 13 parts (same count as a letter, different parts).
+const ARTICLE_LABELS = {
+  headline: "Headline", byline: "Byline (your full name)", hook: "Opening hook", purpose: "Purpose", context: "Context",
+  keyinfo1: "Key information 1", keyinfo2: "Key information 2", keyinfo3: "Key information 3", keyinfo4: "Key information 4", keyinfo5: "Key information 5",
+  ownIdea: "Own idea", cta: "Call to action", thanks: "Thanks to readers",
+};
+const ARTICLE_ORDER = ["headline", "byline", "hook", "purpose", "context", "keyinfo1", "keyinfo2", "keyinfo3", "keyinfo4", "keyinfo5", "ownIdea", "cta", "thanks"];
+
 /** parts: { key: [correct, wrongA, wrongB] }  — stored ids: "a" is always the correct one (the client sees opaque, shuffled ids). */
-function buildComponents(parts) {
-  return ORDER.map((key) => ({
-    key, label: LABELS[key],
+function buildComponents(parts, order = ORDER, labels = LABELS) {
+  return order.map((key) => ({
+    key, label: labels[key],
     options: ["a", "b", "c"].map((id, i) => ({ id, text: parts[key][i] })),
   }));
 }
 
 /** Join the correct options the same way the Worker's assembleLetter() does. */
-function modelLetterFrom(parts, breaks) {
+function modelLetterFrom(parts, breaks, order = ORDER, article = false) {
   let out = "", prev = "";
-  for (const key of ORDER) {
+  for (const key of order) {
     const text = parts[key][0];
-    if (out) out += breaks.includes(key) ? "\n\n" : (prev === "salutation" || key === "signoff" || key === "name") ? "\n" : " ";
+    if (out) {
+      if (breaks.includes(key)) out += "\n\n";
+      else if (article ? (prev === "headline" || prev === "byline" || key === "byline") : (prev === "salutation" || key === "signoff" || key === "name")) out += "\n";
+      else out += " ";
+    }
     out += text;
     prev = key;
   }
@@ -188,10 +223,73 @@ const PARTS_2 = {
   name: ["Wei Ming", "Mr Tan Wei Ming", "Your classmate from 5IG"],
 };
 
+// v1.15 tutorial ARTICLE (no salutation / sign-off). Same realistic-slip rule for the wrong options.
+const BREAKS_ARTICLE = ["hook", "keyinfo1", "cta"];
+const PARTS_3 = {
+  headline: ["Come and Grow with Us at the Garden Club Open House!", "Garden Club Open House Details.", "A Very Long Notice About Something That Is Happening At School Soon"],
+  byline: ["By Wei Ming Tan", "By Wei Ming", "By A Member Of The Garden Club"],
+  hook: [
+    "Have you ever wondered how the herbs and vegetables on your plate begin their journey?",
+    "The Garden Club is having an Open House.",
+    "Gardening may sound boring, but you should still read this.",
+  ],
+  purpose: [
+    "I am excited to share the details of our Garden Club Open House and to invite every one of you to take part.",
+    "I am writing to complain that not enough pupils know about the Garden Club.",
+    "I want to talk about the garden, the school and a few other things.",
+  ],
+  context: [
+    "As a proud member of the Garden Club, I have spent many afternoons preparing the Rooftop Garden for this special event.",
+    "As a member of the Library Club, I have spent many afternoons preparing the library for a special event.",
+    "I have been busy with my homework, so I only have a little to say about it.",
+  ],
+  keyinfo1: [
+    "The Open House will be held on Wednesday, 18 March, from 2pm to 4pm.",
+    "The Open House will be held on Wednesday, 19 March, from 2pm to 4pm.",
+    "The Open House will be held on a Wednesday afternoon in March, but I did not note the exact date.",
+  ],
+  keyinfo2: [
+    "Furthermore, it will take place at the Rooftop Garden on Level 5.",
+    "Furthermore, it will take place at the School Hall on Level 1.",
+    "Furthermore, it will take place somewhere in the school building.",
+  ],
+  keyinfo3: [
+    "Visitors can plant their very own seedling and taste fresh herbs picked from our garden.",
+    "Visitors can water the plants and buy fresh vegetables grown by our members.",
+    "Visitors can try a few gardening activities, although I am not sure which ones.",
+  ],
+  keyinfo4: [
+    "Moreover, please remember to bring a recycled pot or container so that you can take your seedling home.",
+    "Moreover, please remember to buy a brand new pot from the shop so that you can take your seedling home.",
+    "Moreover, please bring something to carry your seedling in, whatever you can find.",
+  ],
+  keyinfo5: [
+    "To take part, simply register with Ms Lim in the Staff Room by 11 March.",
+    "To take part, simply register with Ms Tan in the Staff Room by 11 March.",
+    "To take part, simply register with a teacher before the event.",
+  ],
+  ownIdea: [
+    "After taking your seedling home, you can set a daily phone reminder to water it so that it grows tall and strong.",
+    "After taking your seedling home, you can keep it in a dark cupboard so that it stays safe.",
+    "After taking your seedling home, you can plant a tree on the school field instead.",
+  ],
+  cta: [
+    "So why not join us at the Rooftop Garden and register with Ms Lim today?",
+    "I hope many of you will feel like coming along someday.",
+    "You must register today or you will be sorry.",
+  ],
+  thanks: [
+    "Thank you for reading, and I hope to see you there!",
+    "That is all, bye.",
+    "Thx 4 reading, c u there!",
+  ],
+};
+
 export const DEMO_CASES = [
   {
     id: "demo-1",
     title: "Case #1 — The Recycling Fair (Tutorial)",
+    format: "formal_letter",
     formal: true,
     imageData: svgDataUrl(RECYCLING_FAIR_SVG),
     taskText:
@@ -226,6 +324,7 @@ export const DEMO_CASES = [
   {
     id: "demo-2",
     title: "Case #2 — Sports Day Mix-up (Tutorial)",
+    format: "informal_letter",
     formal: false,
     imageData: svgDataUrl(SPORTS_DAY_SVG),
     taskText:
@@ -255,5 +354,42 @@ export const DEMO_CASES = [
     components: buildComponents(PARTS_2),
     answerKey: { components: Object.fromEntries(ORDER.map((k) => [k, "a"])), paragraphBreaks: BREAKS },
     model_letter: modelLetterFrom(PARTS_2, BREAKS),
+  },
+  {
+    id: "demo-3",
+    title: "Case #3 — Garden Club Open House (Article Tutorial)",
+    format: "article",
+    formal: false,
+    imageData: svgDataUrl(GARDEN_OPEN_HOUSE_SVG),
+    taskText:
+      "You are a member of your school's Garden Club and you saw this notice about the Garden Club Open House. Write an article for the school newsletter to encourage your schoolmates to come. Use the notice for details, and include one idea of your own on how pupils can keep their seedlings healthy at home.",
+    taskChunks: [
+      { id: "c1", text: "You are a member of your school's Garden Club and you saw this notice about the Garden Club Open House.", type: "context" },
+      { id: "c2", text: "Write an article for the school newsletter", type: "audience" },
+      { id: "c3", text: "to encourage your schoolmates to come.", type: "purpose" },
+      { id: "c4", text: "Use the notice for details,", type: "other" },
+      { id: "c5", text: "and include one idea of your own on how pupils can keep their seedlings healthy at home.", type: "other" },
+    ],
+    stimulusPoints: [
+      { id: "s1", text: "Date: Wednesday, 18 March, 2pm to 4pm", relevant: true },
+      { id: "s2", text: "Venue: Rooftop Garden, Level 5", relevant: true },
+      { id: "s3", text: "Plant your own seedling and taste fresh herbs", relevant: true },
+      { id: "s4", text: "Bring a recycled pot or container to take the seedling home", relevant: true },
+      { id: "s5", text: "Register with Ms Lim by 11 March", relevant: true },
+      { id: "s6", text: "The Garden Club won the Green School Award 2024", relevant: false },
+      { id: "s7", text: "Free lemongrass tea for the first 40 visitors", relevant: false },
+    ],
+    ownContentPrompt:
+      "Suggest ONE idea on how pupils can keep their seedlings healthy once they have taken them home in a recycled pot.",
+    hunchHint: "The notice says pupils take the seedling home in a recycled pot. What does a young plant need every day?",
+    ownContentKeywords: [
+      ["water", "watering", "reminder", "alarm", "daily"],
+      ["sunlight", "sunny", "window", "balcony", "sun"],
+      ["journal", "record", "photo", "track growth", "diary"],
+      ["fertiliser", "fertilizer", "compost", "rice water", "tea leaves"],
+    ],
+    components: buildComponents(PARTS_3, ARTICLE_ORDER, ARTICLE_LABELS),
+    answerKey: { components: Object.fromEntries(ARTICLE_ORDER.map((k) => [k, "a"])), paragraphBreaks: BREAKS_ARTICLE },
+    model_letter: modelLetterFrom(PARTS_3, BREAKS_ARTICLE, ARTICLE_ORDER, true),
   },
 ];
