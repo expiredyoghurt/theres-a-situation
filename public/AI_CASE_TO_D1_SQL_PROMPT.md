@@ -1,0 +1,113 @@
+# Prompt: Generate a complete Boss! There's a situation! case as D1 SQL
+
+Copy everything below into the external AI tool you want to use to author a new case. Replace the CASE BRIEF section with your own content.
+
+---
+
+You are generating one complete practice case for the English situational-writing game **"Boss! There's a situation!"**.
+
+Your job is to return a **single executable SQLite/D1 SQL file** that inserts exactly one case into the existing `cases` table.
+
+## Important rules
+
+1. Output **SQL only**. No markdown fences. No explanation before or after the SQL.
+2. Use one `INSERT INTO cases (...) VALUES (...)` statement.
+3. Generate a unique case id such as `case_import_school_trip_001` using lowercase letters, numbers, underscores and hyphens only.
+4. The case must contain exactly **13 Step 4 components in this exact order and with these exact keys**:
+   - `salutation`
+   - `greeting`
+   - `purpose`
+   - `context`
+   - `keyinfo1`
+   - `keyinfo2`
+   - `keyinfo3`
+   - `keyinfo4`
+   - `keyinfo5`
+   - `ownIdea`
+   - `closing`
+   - `signoff`
+   - `name`
+5. Every component must contain **exactly 3 options** with ids `a`, `b`, `c`.
+6. The `answer_key.components` object must identify the correct option id for every one of the 13 components.
+7. The pupil-facing UI automatically provides a separate blank **"write your own"** text field for every component. Do **not** invent a fourth stored option for that field.
+8. `format` is REQUIRED and must never be NULL or omitted (a missing format is treated as an informal letter). It is `'formal_letter'`, `'informal_letter'` or `'article'`; also set `formal = 1` for a formal letter and `formal = 0` for an informal letter or an article.
+   **For an article, replace the 13 component keys in rule 4 with, in this order:** `headline`, `byline`, `hook`, `purpose`, `context`, `keyinfo1`, `keyinfo2`, `keyinfo3`, `keyinfo4`, `keyinfo5`, `ownIdea`, `cta`, `thanks` (no salutation, greeting, closing, sign-off or name). The byline is `By First Last` (a FULL name; the wrong options are a first name only and a group name). `answer_key.paragraphBreaks` for an article should be `["hook","keyinfo1","cta"]`. The model letter is the model ARTICLE (headline, byline, then three paragraphs, about 150-170 words).
+9. For a formal letter, use a full first + last name in the `name` component. For an informal letter, use a first name only.
+10. For formal sign-off, suitable choices include `Yours faithfully,`, `Yours sincerely,`, `Best regards,` and `Written by` (the last is accepted as a sign-off line, e.g. for a formal report or article-style piece). For informal writing, use natural informal choices.
+11. The 5 `keyinfo` components must match the 5 required facts in `stimulus_points`.
+12. `stimulus_points` must contain the 5 required facts with `relevant: true`, plus 2 plausible but unnecessary distractor facts with `relevant: false`.
+13. `task_chunks` should identify the purpose, audience and context where possible. Use objects shaped like `{"id":"t1","text":"...","type":"purpose"}`.
+14. `own_content_keywords` must be valid JSON containing keyword groups useful for marking the pupil's original idea, for example `[["donate","give"],["poster","sign"]]`.
+15. `answer_key.paragraphBreaks` should normally be `[`"purpose"`, `"keyinfo1"`, `"closing"`, `"signoff"`]` unless the task clearly calls for a different paragraph structure.
+16. Set `status` to **`'draft'`**. The teacher reviews the case, attaches the picture in the teacher page (Manual backend upload tab) and clicks Publish. Never set `'published'`.
+17. Set `created_by` to `external-ai-import`.
+18. Set `approved_by` to `external-ai-import` and `approved_at` to the current ISO timestamp.
+19. `image_data` should be **NULL**. The teacher will attach the picture later from the Teacher front-end using the case id.
+20. Escape all apostrophes inside SQL strings by doubling them (`''`).
+21. Store JSON using valid JSON syntax inside SQL string literals.
+22. Keep the case content suitable for Primary 5/6 English situational writing.
+23. Distractors must be REALISTIC mistakes a Primary 6 pupil could actually make, never silly or rude. For each key-information part: one option with a single fact changed (a different date, time, place, name or number) and one vaguer option that leaves the key fact out. For the salutation and sign-off: use the wrong register or the wrong pairing (Dear Mr/Ms Name goes with Yours sincerely; Dear Sir/Madam goes with Yours faithfully). For the own idea: one idea that cannot work in this situation (for example it needs the pupil to be present when they cannot be) and one idea unrelated to the clues in the notice.
+24. The model letter must be a coherent full reference answer that uses the intended register and includes all 5 key information points plus the own-content idea in a natural way.
+
+## Required SQL column order
+
+Use these columns exactly:
+
+`id, title, image_data, task_text, task_chunks, formal, format, stimulus_points, own_content_prompt, own_content_keywords, components, answer_key, model_letter, status, created_by, approved_by, approved_at`
+
+## CASE BRIEF
+
+Title:
+[INSERT TITLE]
+
+Format (FORMAL LETTER, INFORMAL LETTER or ARTICLE):
+[INSERT FORMAT]
+
+Task prompt:
+[INSERT FULL TASK PROMPT]
+
+Key information 1:
+[INSERT FACT 1]
+
+Key information 2:
+[INSERT FACT 2]
+
+Key information 3:
+[INSERT FACT 3]
+
+Key information 4:
+[INSERT FACT 4]
+
+Key information 5:
+[INSERT FACT 5]
+
+Own-content question:
+[INSERT OWN-IDEA QUESTION]
+
+Acceptable own-content ideas:
+[INSERT 2-4 EXAMPLES]
+
+Audience:
+[INSERT AUDIENCE]
+
+Context:
+[INSERT BACKGROUND CONTEXT]
+
+Model-answer guidance:
+[INSERT ANY CONTENT OR TONE GUIDANCE]
+
+---
+
+Before returning the SQL, silently validate:
+
+- exactly 13 components;
+- exact component-key order;
+- exactly 3 options per component;
+- every answer-key component points to `a`, `b` or `c`;
+- exactly 5 relevant stimulus points plus 2 irrelevant distractors;
+- valid JSON in every JSON column;
+- no unescaped apostrophes that would break the SQL;
+- model letter agrees with the task and key information;
+- `image_data` is NULL.
+
+Return the final executable SQL only.

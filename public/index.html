@@ -84,6 +84,8 @@
     opacity:.85;
   }
 
+  .stamp.stamp-case{position:static;display:inline-block;transform:rotate(-1.5deg);margin:0 0 10px;font-size:12px;max-width:100%;}
+
   /* ---------- home ---------- */
   .agency-title{font-size:30px;text-align:center;color:var(--navy);margin:6px 0 2px;}
   .agency-sub{text-align:center;color:#5b4321;margin:0 0 22px;font-size:14px;}
@@ -116,6 +118,7 @@
     background:var(--navy-light);color:#fff;
   }
   .case-card .tag.informal{background:var(--red-dark);}
+  .case-card .tag.article{background:#2f6b3a;}
   .case-card h3{font-size:15px;margin:0 0 4px;color:var(--navy);}
 
   /* ---------- tabs / progress ---------- */
@@ -252,6 +255,31 @@
   .progress-sticky{position:sticky;top:0;z-index:5;background:var(--paper);border:1.5px solid var(--paper-shadow);border-radius:8px;padding:8px 12px;margin:0 0 12px;font-size:13px;color:#3d2f17;box-shadow:0 3px 8px rgba(0,0,0,.15);}
   .progress-sticky .bar-track{margin-top:5px;}
   .component{scroll-margin-top:84px;}
+  /* v1.17 Step 4 stepper + format-specific preview */
+  .draft-grid{display:grid;grid-template-columns:1fr;gap:16px;align-items:start;}
+  @media (min-width:880px){.draft-grid{grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);}.draft-side{position:sticky;top:84px;}}
+  .part-rail{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;}
+  .part-dot{width:34px;height:34px;border-radius:50%;border:2px solid var(--paper-shadow);background:#fff;font:600 13px 'Lexend';color:#5b4321;cursor:pointer;position:relative;}
+  .part-dot.done{background:var(--green-light);border-color:var(--green);color:#14532d;}
+  .part-dot.done::after{content:"✓";position:absolute;right:-3px;top:-5px;font-size:11px;background:var(--green);color:#fff;border-radius:50%;width:15px;height:15px;line-height:15px;}
+  .part-dot[aria-current="step"]{outline:3px solid var(--gold);outline-offset:2px;background:var(--navy);color:#fff;border-color:var(--navy);}
+  .part-dot:focus-visible,.linkish:focus-visible{outline:3px solid #1d4ed8;outline-offset:2px;}
+  .part-current{font-family:'Special Elite',monospace;color:var(--navy);font-size:14px;margin:0 0 8px;}
+  .stepper:not(.all) .component{display:none;}
+  .stepper:not(.all) .component.active{display:block;}
+  .part-nav{display:flex;justify-content:space-between;gap:8px;margin:0 0 12px;}
+  .part-nav .btn{min-height:44px;}
+  .linkish{background:none;border:none;color:#1d4ed8;text-decoration:underline;cursor:pointer;font:13px 'Lexend';padding:6px 2px;min-height:32px;}
+  .letter-preview.paper-letter{background:#fffdf6 repeating-linear-gradient(transparent 0 25px,rgba(120,100,60,.13) 25px 26px);border:1px solid var(--paper-shadow);box-shadow:0 2px 0 var(--paper-shadow),0 8px 14px rgba(0,0,0,.12);line-height:26px;position:relative;}
+  .letter-preview .doc-stamp{display:inline-block;font:600 10px 'Lexend';letter-spacing:.08em;text-transform:uppercase;border:1.5px solid var(--red);color:var(--red);padding:1px 7px;border-radius:3px;transform:rotate(-3deg);margin:0 0 8px;line-height:16px;}
+  .letter-preview p{margin:0 0 12px;}
+  .lp-salute{font-weight:600;} .lp-sign{margin:0 0 2px !important;}
+  .letter-preview.paper-news{background:#f6f1e3;border:1px solid #bfb391;box-shadow:0 8px 14px rgba(0,0,0,.14);font-family:Georgia,'Times New Roman',serif;line-height:1.5;}
+  .paper-news .np-mast{text-align:center;font:700 11px 'Special Elite',monospace;letter-spacing:.25em;border-bottom:3px double #6b5b3a;padding-bottom:5px;margin-bottom:10px;color:#4a3d22;}
+  .paper-news .np-headline{font:800 22px/1.15 Georgia,serif;margin:0 0 4px;color:#1b1b1b;}
+  .paper-news .np-byline{font:italic 13px Georgia,serif;color:#5b4a28;border-bottom:1px solid #cdbf98;padding-bottom:6px;margin:0 0 10px;}
+    .letter-preview.paper-news{font-size:14.5px;}
+  .paper-news .np-body p{margin:0 0 10px;text-align:justify;hyphens:auto;}
   .starters{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px;}
   .starter-chip{font-family:'Lexend';font-size:12.5px;padding:5px 11px;border-radius:20px;border:1.5px solid var(--gold);background:#fff7de;color:#3d2f17;cursor:pointer;}
   .starter-chip:hover{background:#ffefb8;}
@@ -265,6 +293,19 @@
   .missed-banner ul{margin:4px 0 0;padding-left:18px;}
   .missed-banner button{background:none;border:1.5px solid var(--red);color:var(--red-dark);border-radius:6px;font-size:12px;padding:4px 8px;cursor:pointer;white-space:nowrap;font-family:'Lexend';}
   .est-rows{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:6px 0 4px;}
+  .evidence-photo{display:block;position:relative;width:100%;max-width:480px;margin:6px auto 22px;padding:10px 10px 14px;background:#fff;border:1px solid #d8cfb4;box-shadow:0 6px 14px rgba(0,0,0,.25);transform:rotate(-1.2deg);cursor:zoom-in;}
+  .evidence-photo img{display:block;width:100%;border:1px solid #cfc6a8;}
+  .evidence-photo::before,.evidence-photo::after{content:"";position:absolute;top:-9px;width:62px;height:20px;background:rgba(232,214,150,.78);box-shadow:0 1px 2px rgba(0,0,0,.2);}
+  .evidence-photo::before{left:14px;transform:rotate(-6deg);} .evidence-photo::after{right:14px;transform:rotate(5deg);}
+  .evidence-photo figcaption{font:12px 'Lexend';color:#7a6a45;text-align:center;margin-top:6px;}
+  .evidence-photo.zoom{position:fixed;inset:12px;z-index:50;max-width:none;margin:0;transform:none;cursor:zoom-out;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,16,22,.94);border:none;}
+  .evidence-photo.zoom img{max-height:88vh;width:auto;max-width:100%;object-fit:contain;} .evidence-photo.zoom::before,.evidence-photo.zoom::after{display:none;} .evidence-photo.zoom figcaption{color:#dbe4ee;}
+  .gauge-row{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;margin:8px 0;}
+  .gauge{text-align:center;font-size:12.5px;color:#3d2f17;max-width:150px;}
+  .gauge svg{display:block;margin:0 auto 4px;} .gauge .gtrack{stroke:var(--paper-dark);} .gauge .gfill{transition:stroke-dashoffset .9s ease;}
+  .gauge.hi .gfill{stroke:var(--green);} .gauge.mid .gfill{stroke:var(--gold);} .gauge.lo .gfill{stroke:var(--red);}
+  @media (prefers-reduced-motion:reduce){.gauge .gfill{transition:none;}}
+  .rank-badge svg{vertical-align:-4px;margin-right:4px;}
   .est-pill{background:var(--card);border:1.5px solid var(--paper-shadow);border-radius:8px;padding:6px 12px;font-size:14px;color:#3d2f17;}
   .est-note{font-size:13px;color:#7a4e12;margin:6px 0 10px;font-style:italic;}
   .points-meter{max-width:420px;margin:8px auto 0;text-align:left;}
@@ -370,7 +411,10 @@
     .topbar-actions button{font-size:11.5px;padding:6px 9px;}
     .panel{padding:16px 14px 20px;}
     .panel::before{inset:5px;}
-    .stamp{top:10px;right:12px;font-size:11px;padding:4px 8px;}
+    .stamp{position:static;display:inline-block;transform:none;margin:0 0 8px;font-size:11px;padding:3px 8px;}
+    .level-grid{gap:6px;}
+    .level-card{font-size:0;padding:8px 6px;text-align:center;}
+    .level-card b{font-size:12px;margin:0;}
     .agency-title{font-size:22px;}
     .case-grid,.evidence-grid{grid-template-columns:1fr;}
     .name-row{flex-direction:column;align-items:stretch;}
@@ -405,7 +449,7 @@
 
 <div class="wrap" id="app"></div>
 
-<div class="footer-link"><a href="/admin.html">Teacher / Admin tools →</a> <span style="color:#5b6a78;">· v1.14</span></div>
+<div class="footer-link"><a href="/admin.html">Teacher / Admin tools →</a> <span style="color:#5b6a78;">· v2.0</span></div>
 
 <script>
 
@@ -457,10 +501,20 @@ let state = {
 };
 
 const STEPS = ["Briefing", "Evidence", "Hunch", "Draft", "Verdict"];
+
+// v1.15: a case is a formal letter, an informal letter or an article.
+function caseFormat(c) {
+  if (c && (c.format === "article" || c.format === "formal_letter" || c.format === "informal_letter")) return c.format;
+  return c && c.formal === false ? "informal_letter" : "formal_letter";
+}
+const isArticleCase = (c) => caseFormat(c) === "article";
+/** "letter" or "article" for the case on screen (or the one given). */
+const docWord = (c) => (isArticleCase(c || state.currentCase) ? "article" : "letter");
+const FORMAT_TAG = { formal_letter: ["Formal", ""], informal_letter: ["Informal", "informal"], article: ["Article", "article"] };
 const LEVELS = [
   { n: 1, name: "Guided", desc: "Pick one of 3 suggestions for each part, or write your own." },
   { n: 2, name: "Starters", desc: "Write each part in your own words, helped by sentence starters." },
-  { n: 3, name: "Independent", desc: "Write the whole letter yourself from a blank page." },
+  { n: 3, name: "Independent", desc: "Write the whole piece yourself from a blank page." },
 ];
 
 async function api(path, opts) {
@@ -481,6 +535,7 @@ function resetCaseState() {
   state.paragraphBreaks = new Set();
   state.signOffName = "";
   state.componentResponses = {};
+  state.activePart = undefined;
   state.confirmed = false;
   state.finalLetter = "";
   state.hintOpen = false;
@@ -607,7 +662,7 @@ function renderHome() {
     const mc = Number(prof.masteredCount);
     rankHtml = `
       <div class="rank-card" aria-label="Your detective rank">
-        <span class="rank-badge">🔎 ${escapeHtml(rank.title)}</span>
+        <span class="rank-badge">${RANK_SVG}${escapeHtml(rank.title)}</span>
         ${nextTxt}
         ${Number.isFinite(mc) ? `<span>${mc} case${mc === 1 ? "" : "s"} mastered</span>` : ""}
       </div>`;
@@ -667,10 +722,10 @@ function renderHome() {
 function caseCardHtml(c) {
   const st = caseStatus(c.id);
   return `
-    <div class="case-card" data-id="${escapeHtml(c.id)}" role="button" tabindex="0" aria-label="Open case: ${escapeHtml(c.title)} (${c.formal ? "formal" : "informal"} writing). Status: ${escapeHtml(st.text)}.">
-      <img src="${escapeHtml(c.imageData)}" alt="" />
+    <div class="case-card" data-id="${escapeHtml(c.id)}" role="button" tabindex="0" aria-label="Open case: ${escapeHtml(c.title)} (${FORMAT_TAG[caseFormat(c)][0].toLowerCase()} writing). Status: ${escapeHtml(st.text)}.">
+      ${(c.imageUrl || c.imageData) ? `<img src="${escapeHtml(c.imageUrl || c.imageData)}" alt="" loading="lazy" />` : ""}
       <div class="body">
-        <span class="tag ${c.formal ? "" : "informal"}">${c.formal ? "Formal" : "Informal"}</span><span class="status-chip ${st.key}">${st.icon} ${escapeHtml(st.text)}</span>
+        <span class="tag ${FORMAT_TAG[caseFormat(c)][1]}">${FORMAT_TAG[caseFormat(c)][0]}</span><span class="status-chip ${st.key}">${st.icon} ${escapeHtml(st.text)}</span>
         <h3>${escapeHtml(c.title)}</h3>
       </div>
     </div>
@@ -829,7 +884,7 @@ function renderCase() {
 
   app.innerHTML = `
     <div class="panel">
-      <div class="stamp">${escapeHtml(c.title)}</div>
+      <div class="stamp stamp-case">${escapeHtml(c.title)}</div>
       <div class="tabs">${tabsHtml}</div>
       <div id="stepBody"></div>
     </div>
@@ -920,13 +975,29 @@ function renderBriefing(body, c) {
   });
 }
 
+/** SVG ring gauge. Colour is reinforced by the number and an aria-label. */
+function gaugeHtml(score, max, label) {
+  const sc = Number(score) || 0, mx = Number(max) || 1, frac = Math.max(0, Math.min(1, sc / mx));
+  const R = 34, C = 2 * Math.PI * R, band = frac >= 0.75 ? "hi" : frac >= 0.5 ? "mid" : "lo";
+  return `<div class="gauge ${band}" role="img" aria-label="${escapeHtml(label)}: ${sc} out of ${mx}">
+    <svg width="88" height="88" viewBox="0 0 88 88" aria-hidden="true"><circle class="gtrack" cx="44" cy="44" r="${R}" fill="none" stroke-width="9"/><circle class="gfill" cx="44" cy="44" r="${R}" fill="none" stroke-width="9" stroke-linecap="round" transform="rotate(-90 44 44)" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - frac)).toFixed(1)}"/><text x="44" y="49" text-anchor="middle" font-family="Special Elite, monospace" font-size="17" fill="#1B2A38">${sc}/${mx}</text></svg>${escapeHtml(label)}</div>`;
+}
+const RANK_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.2 8 11 4.6-1.8 8-6 8-11V5z" fill="#C99A2E" stroke="#F4E7BF" stroke-width="1.2"/><circle cx="11" cy="11" r="3.6" fill="none" stroke="#1B2A38" stroke-width="1.8"/><path d="m13.8 13.8 3.4 3.4" stroke="#1B2A38" stroke-width="1.8" stroke-linecap="round"/></svg>';
+
+function bindEvidencePhoto(body) {
+  const fig = $(".evidence-photo", body); if (!fig) return;
+  const toggle = () => { const z = fig.classList.toggle("zoom"); fig.setAttribute("aria-label", z ? "Close enlarged picture" : "Enlarge the picture"); };
+  fig.addEventListener("click", toggle);
+  fig.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } else if (e.key === "Escape" && fig.classList.contains("zoom")) toggle(); });
+}
+
 // ---- Step 1: Evidence (stimulus key info) ----
 function renderEvidence(body, c) {
   body.innerHTML = `
     <h2 class="step-title">🧩 Step 2 — The Evidence Board</h2>
     ${missedBannerHtml()}
-    <p class="step-instr">Study the clues, then pin the pieces of information you think belong in your letter. Watch out — not everything is relevant!</p>
-    ${c.imageData ? `<img src="${c.imageData}" alt="Stimulus" style="width:100%;max-width:480px;display:block;margin:0 auto 16px;border:2px solid var(--navy);border-radius:8px;"/>` : ""}
+    <p class="step-instr">Study the clues, then pin the pieces of information you think belong in your ${docWord(c)}. Watch out — not everything is relevant!</p>
+    ${c.imageData ? `<figure class="evidence-photo" role="button" tabindex="0" aria-label="Enlarge the picture"><img src="${escapeHtml(c.imageData)}" alt="The notice or picture for this case"/><figcaption>Evidence photo — tap to enlarge</figcaption></figure>` : ""}
     ${(c.requiredText || c.requiredImageData) ? `
       <div class="required-box" id="requiredBox">
         <h3>📋 Required content points</h3>
@@ -956,6 +1027,7 @@ function renderEvidence(body, c) {
       if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") { e.preventDefault(); toggleEvidence(el); }
     });
   });
+  bindEvidencePhoto(body);
   navRow(body, {
     nextLabel: "Next: Hunch →",
     nextDisabled: state.stimulusSelected.size === 0,
@@ -994,6 +1066,10 @@ function renderHunch(body, c) {
 
 // ---- Step 4: Draft the letter (writing ladder) ----
 const STARTERS = {
+  headline: ["Come and Join …!", "Why You Should …", "Have You Heard About …?"],
+  hook: ["Have you ever …?", "Imagine …", "What if you could …?"],
+  cta: ["So why not …?", "Join us on …", "Remember to …"],
+  thanks: ["Thank you for reading, and …", "Thank you for your time, and …"],
   salutation: ["Dear Mr/Ms …,", "Dear Sir/Madam,", "Hi …,"],
   greeting: ["I hope you are well.", "I hope this message finds you well."],
   purpose: ["I am writing to…", "I am writing because…"],
@@ -1007,6 +1083,7 @@ const STARTERS = {
 function startersFor(comp) {
   const k = String(comp.key || "");
   if (k === "name") return [state.playerName || "Your name"];
+  if (k === "byline") return ["By " + (state.playerName || "Your Full Name")];
   if (STARTERS[k]) return STARTERS[k];
   if (/^keyinfo/i.test(k)) return STARTERS.keyinfo;
   return ["I would like to…", "Please note that…"];
@@ -1064,6 +1141,9 @@ function bindLevelChooser(body, c) {
 }
 
 function registerLineHtml(c) {
+  if (isArticleCase(c)) {
+    return `<div class="register-line">📰 This is an <b>article</b> for a wider audience (like your schoolmates). Give it a <b>headline</b> and your <b>byline</b> (first and last name), open with something that grabs attention, weave every point into flowing paragraphs, end with a <b>call to action</b> and <b>thank your readers</b>. Keep the tone friendly, but the grammar proper: no text-speak. No “Dear …” or “Yours …” needed.</div>`;
+  }
   return `<div class="register-line">${c.formal
     ? "📝 This is a <b>formal</b> letter: use polite, complete sentences. No slang and no short forms like “don't”."
     : "📝 This is an <b>informal</b> letter: a friendly, chatty tone is fine, but still write full sentences."}</div>`;
@@ -1088,7 +1168,15 @@ function caseNotesHtml(c) {
 }
 
 function proofreadHtml() {
-  const items = [
+  const article = isArticleCase(state.currentCase);
+  const items = article ? [
+    "Capital letters at the start of sentences",
+    "Full stops at the ends of sentences",
+    "Names, dates and times copied correctly",
+    "Headline on its own line and byline with my first and last name",
+    "A call to action and a thank-you at the end",
+    "One paragraph for each main idea, with linking words (Furthermore, Moreover, However)",
+  ] : [
     "Capital letters at the start of sentences",
     "Full stops at the ends of sentences",
     "Names, dates and times copied correctly",
@@ -1098,7 +1186,7 @@ function proofreadHtml() {
   return `
     <fieldset class="proof">
       <legend>🔍 Proofread checklist</legend>
-      <p class="field-note" style="margin:0 0 4px;">Tick each one as you check your letter. These are reminders — you can still submit anytime.</p>
+      <p class="field-note" style="margin:0 0 4px;">Tick each one as you check your ${docWord()}. These are reminders — you can still submit anytime.</p>
       ${items.map((t, i) => `<label for="proof${i}"><input type="checkbox" id="proof${i}"/> <span>${escapeHtml(t)}</span></label>`).join("")}
     </fieldset>`;
 }
@@ -1121,10 +1209,24 @@ function renderDraft(body, c) {
     ${registerLineHtml(c)}
     ${lvl === 2 ? caseNotesHtml(c) : ""}
     <div class="progress-sticky" id="progressSticky" role="status" aria-live="polite"></div>
-    <div id="components"></div>
-    <h3 style="color:var(--navy);font-size:15px;margin:18px 0 6px;">📄 Live preview</h3>
-    <div class="letter-preview" id="preview"></div>
+    <div class="draft-grid">
+      <div class="draft-main">
+        <nav class="part-rail" id="partRail" aria-label="Parts of your ${docWord(c)}"></nav>
+        <p class="part-current" id="partCurrent"></p>
+        <div id="components" class="stepper${state.showAllParts ? " all" : ""}"></div>
+        <div class="part-nav" id="partNav"></div>
+        <button type="button" class="linkish" id="toggleAll">${state.showAllParts ? "Show one part at a time" : "Show all parts on one page"}</button>
+      </div>
+      <aside class="draft-side">
+        <h3 style="color:var(--navy);font-size:15px;margin:0 0 6px;">📄 Live preview</h3>
+        <div class="letter-preview" id="preview"></div>
+      </aside>
+    </div>
   `;
+  if (typeof state.activePart !== "number" || state.activePart >= c.components.length) {
+    const firstOpen = c.components.findIndex((x) => !isComponentAnswered(x));
+    state.activePart = firstOpen === -1 ? 0 : firstOpen;
+  }
   bindMissedBanner(body);
   bindLevelChooser(body, c);
   const compsEl = $("#components", body);
@@ -1184,7 +1286,36 @@ function renderDraft(body, c) {
     const cb = compEl.querySelector("[data-parakey]");
     if (cb) cb.addEventListener("change", (e) => { if (e.target.checked) state.paragraphBreaks.add(key); else state.paragraphBreaks.delete(key); persistProgress(); updatePreview(c); });
   });
+  $("#toggleAll", body).addEventListener("click", () => { state.showAllParts = !state.showAllParts; renderDraft(body, c); });
   updatePreview(c); updateDraftNav(body, c);
+}
+
+/** Show only the active part (unless "show all"), refresh the rail and the Previous/Next buttons. */
+function applyStepper(body, c, { focus = false, scroll = false } = {}) {
+  const comps = $$("#components .component", body);
+  const n = c.components.length;
+  const i = Math.max(0, Math.min(n - 1, state.activePart || 0));
+  state.activePart = i;
+  comps.forEach((el, k) => el.classList.toggle("active", k === i));
+  const rail = $("#partRail", body);
+  if (rail) {
+    rail.innerHTML = c.components.map((comp, k) => {
+      const done = isComponentAnswered(comp);
+      return `<button type="button" class="part-dot${done ? " done" : ""}" data-k="${k}" ${k === i ? 'aria-current="step"' : ""} aria-label="Part ${k + 1}: ${escapeHtml(comp.label)}${done ? ", done" : ""}">${k + 1}</button>`;
+    }).join("");
+    $$(".part-dot", rail).forEach((b) => b.addEventListener("click", () => { state.activePart = Number(b.dataset.k); applyStepper(body, c, { focus: true, scroll: true }); }));
+  }
+  const cur = $("#partCurrent", body);
+  if (cur) cur.textContent = `Part ${i + 1} of ${n}: ${c.components[i].label}`;
+  const nav = $("#partNav", body);
+  if (nav) {
+    nav.innerHTML = `<button type="button" class="btn secondary" id="partPrev" ${i === 0 ? "disabled" : ""}>← Previous part</button><button type="button" class="btn secondary" id="partNext" ${i === n - 1 ? "disabled" : ""}>Next part →</button>`;
+    $("#partPrev", nav).addEventListener("click", () => { state.activePart = i - 1; applyStepper(body, c, { focus: true, scroll: true }); });
+    $("#partNext", nav).addEventListener("click", () => { state.activePart = i + 1; applyStepper(body, c, { focus: true, scroll: true }); });
+  }
+  const el = comps[i];
+  if (el && scroll && !state.showAllParts) el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "nearest" });
+  if (el && focus) { const f = $(".option", el) || $("textarea", el); if (f) { try { f.focus({ preventScroll: true }); } catch (e) { f.focus(); } } }
 }
 
 /** Level 1: after a part is answered, glide to the next unanswered part. */
@@ -1200,6 +1331,8 @@ function goToNextPart(body, c, fromIdx) {
     if (cf) cf.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "center" });
     return;
   }
+  state.activePart = target;
+  applyStepper(body, c, { focus: false });
   const el = els[target];
   if (!el) return;
   el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
@@ -1207,24 +1340,60 @@ function goToNextPart(body, c, fromIdx) {
   if (first) { try { first.focus({ preventScroll: true }); } catch (e) { first.focus(); } }
 }
 
-function currentAssembledLetter(c) {
-  let text = "";
+/** Mirrors assembleLetter() on the Worker: salutation / sign-off / name (letters) and headline / byline (articles) sit on their own lines. */
+function assembledSegments(c) {
+  const article = isArticleCase(c);
+  const segs = [];
+  let prev = "";
   for (const comp of c.components) {
     const choice = state.componentChoices[comp.key];
     const opt = (comp.options || []).find((o) => o.id === choice);
     const part = choice === "custom" ? (state.componentResponses[comp.key] || "").trim() : (state.level === 1 && opt ? opt.text : "");
     if (!part) continue;
-    if (state.paragraphBreaks.has(comp.key) && text.length) text += "\n\n";
-    else if (text.length) text += " ";
-    text += part;
+    let sep = "";
+    if (segs.length) {
+      if (state.paragraphBreaks.has(comp.key)) sep = "\n\n";
+      else if (article
+        ? (prev === "headline" || prev === "byline" || comp.key === "byline")
+        : (prev === "salutation" || comp.key === "signoff" || comp.key === "name")) sep = "\n";
+      else sep = " ";
+    }
+    segs.push({ key: comp.key, text: part, sep });
+    prev = comp.key;
   }
-  return text;
+  return segs;
+}
+
+function currentAssembledLetter(c) {
+  return assembledSegments(c).map((g) => g.sep + g.text).join("");
+}
+
+/** Format-aware preview: letter paper for letters, a newspaper clipping for articles. */
+function previewHtml(c) {
+  const segs = assembledSegments(c);
+  const article = isArticleCase(c);
+  const stamp = article ? "" : `<span class="doc-stamp">${caseFormat(c) === "formal_letter" ? "Formal letter" : "Informal letter"}</span>`;
+  if (!segs.length) return { cls: article ? "paper-news" : "paper-letter", html: `${stamp}<span class="placeholder">Your ${docWord(c)} will appear here as you finish each part…</span>` };
+  const blocks = [];
+  for (const g of segs) {
+    if (!blocks.length || g.sep.includes("\n")) blocks.push({ key: g.key, text: g.text });
+    else blocks[blocks.length - 1].text += " " + g.text;
+  }
+  const e = escapeHtml;
+  if (article) {
+    const head = blocks.filter((b) => b.key === "headline" || b.key === "byline");
+    const rest = blocks.filter((b) => b.key !== "headline" && b.key !== "byline");
+    return { cls: "paper-news", html: `<div class="np-mast">SCHOOL NEWS</div>${head.map((b) => b.key === "headline" ? `<h4 class="np-headline">${e(b.text)}</h4>` : `<div class="np-byline">${e(b.text)}</div>`).join("")}<div class="np-body">${rest.map((b) => `<p>${e(b.text)}</p>`).join("")}</div>` };
+  }
+  return { cls: "paper-letter", html: stamp + blocks.map((b) => `<p class="${b.key === "salutation" ? "lp-salute" : (b.key === "signoff" || b.key === "name") ? "lp-sign" : ""}">${e(b.text)}</p>`).join("") };
 }
 
 function updatePreview(c) {
-  const text = currentAssembledLetter(c);
   const el = $("#preview");
-  if (el) el.innerHTML = text ? escapeHtml(text).replace(/\n/g, "<br>") : `<span class="placeholder">Your report will appear here…</span>`;
+  if (!el) return;
+  const p = previewHtml(c);
+  el.className = "letter-preview " + p.cls;
+  el.innerHTML = p.html;
 }
 
 function isComponentAnswered(comp) {
@@ -1238,6 +1407,7 @@ function updateDraftNav(body, c) {
   const done = c.components.filter(isComponentAnswered).length;
   const total = c.components.length;
   const allChosen = done === total;
+  if (typeof applyStepper === "function" && $("#partRail", body)) applyStepper(body, c);
   const prog = $("#progressSticky", body);
   if (prog) {
     prog.innerHTML = `<b>${done} of ${total} parts done</b><div class="bar-track" aria-hidden="true"><div class="bar-fill" style="width:${total ? Math.round(done / total * 100) : 0}%"></div></div>`;
@@ -1246,11 +1416,11 @@ function updateDraftNav(body, c) {
   if (allChosen) {
     box.className = "confirm-box";
     box.innerHTML = `
-      <p><b>All ${total} parts are done!</b> Read your letter in the live preview. When you are happy with it, press <b>Confirm</b> — then you can polish the letter by hand before you submit.</p>
-      <button type="button" class="btn" id="confirmLetter">✅ Confirm my letter</button>`;
+      <p><b>All ${total} parts are done!</b> Read your ${docWord(c)} in the live preview. When you are happy with it, press <b>Confirm</b> — then you can polish the ${docWord(c)} by hand before you submit.</p>
+      <button type="button" class="btn" id="confirmLetter">✅ Confirm my ${docWord(c)}</button>`;
   } else {
     box.className = "confirm-box pending";
-    box.textContent = `Finish all ${total} parts to confirm your letter (${done}/${total} done).`;
+    box.textContent = `Finish all ${total} parts to confirm your ${docWord(c)} (${done}/${total} done).`;
   }
   body.appendChild(box);
   const confirmBtn = $("#confirmLetter", box);
@@ -1275,10 +1445,10 @@ function renderDraftConfirmed(body, c) {
   body.innerHTML = `
     <h2 class="step-title">✍️ Step 4 — Draft Your Report</h2>
     ${missedBannerHtml()}
-    <div class="locked-note">✅ Your letter is confirmed. You can now <b>edit it by hand</b> — fix spelling, smooth the wording, make it sound like you. What you see below is exactly what will be marked.</div>
+    <div class="locked-note">✅ Your ${docWord(c)} is confirmed. You can now <b>edit it by hand</b> — fix spelling, smooth the wording, make it sound like you. What you see below is exactly what will be marked.</div>
     ${state.level >= 2 ? caseNotesHtml(c) : ""}
     <h3 style="color:var(--navy);font-size:15px;margin:10px 0 6px;">📄 Live preview — now editable</h3>
-    <label for="finalLetter" class="field-note" style="display:block;margin-bottom:6px;">Edit your letter here</label>
+    <label for="finalLetter" class="field-note" style="display:block;margin-bottom:6px;">Edit your ${docWord(c)} here</label>
     <textarea class="letter-edit" id="finalLetter" maxlength="4000" spellcheck="true">${escapeHtml(state.finalLetter)}</textarea>
     ${proofreadHtml()}
   `;
@@ -1301,7 +1471,7 @@ function renderDraftConfirmed(body, c) {
   });
 }
 
-/** Level 3: one blank page for the whole letter. */
+/** Level 3: one blank page for the whole letter or article. */
 function renderDraftIndependent(body, c) {
   body.innerHTML = `
     <h2 class="step-title">✍️ Step 4 — Draft Your Report</h2>
@@ -1310,8 +1480,8 @@ function renderDraftIndependent(body, c) {
     <p class="step-instr">${draftInstr()}</p>
     ${registerLineHtml(c)}
     ${caseNotesHtml(c)}
-    <label for="finalLetter" class="field-note" style="display:block;margin-bottom:6px;">Write your whole letter here</label>
-    <textarea class="letter-edit" id="finalLetter" maxlength="4000" spellcheck="true" placeholder="Start with your salutation, then write your letter…">${escapeHtml(state.finalLetter)}</textarea>
+    <label for="finalLetter" class="field-note" style="display:block;margin-bottom:6px;">Write your whole ${docWord(c)} here</label>
+    <textarea class="letter-edit" id="finalLetter" maxlength="4000" spellcheck="true" placeholder="${isArticleCase(c) ? "Start with your headline and byline, then write your article…" : "Start with your salutation, then write your letter…"}">${escapeHtml(state.finalLetter)}</textarea>
     <p class="word-count" id="wordCount" role="status"></p>
     ${proofreadHtml()}
   `;
@@ -1358,11 +1528,13 @@ function buildSubmitPayload(c) {
   payload.componentResponses = state.componentResponses;
   payload.paragraphBreaks = Array.from(state.paragraphBreaks);
   payload.finalLetter = state.confirmed ? state.finalLetter.trim() : "";
-  const nameKey = state.componentChoices.name;
+  // letters sign off with the "name" part; an article's equivalent is the "byline" part
+  const nameField = isArticleCase(c) ? "byline" : "name";
+  const nameKey = state.componentChoices[nameField];
   let signOff = "";
-  if (nameKey === "custom") signOff = state.componentResponses.name || "";
+  if (nameKey === "custom") signOff = state.componentResponses[nameField] || "";
   else if (lvl === 1) {
-    const nameComp = c.components.find((x) => x.key === "name");
+    const nameComp = c.components.find((x) => x.key === nameField);
     const opt = nameComp && (nameComp.options || []).find((o) => o.id === nameKey);
     signOff = opt ? opt.text : "";
   }
@@ -1434,7 +1606,7 @@ function renderVerdict(body, c) {
     ["Briefing", bd.taskIdentification],
     ["Evidence", bd.stimulusKeyInfo],
     ["Own idea", bd.ownContent],
-    ["Letter content & accuracy", bd.letterChoices],
+    [`${docWord(c)[0].toUpperCase() + docWord(c).slice(1)} content & accuracy`, bd.letterChoices],
     ["Paragraphing", bd.paragraphing],
     ["Language & organisation", bd.overallQuality],
   ].filter(([, b]) => b);
@@ -1475,14 +1647,14 @@ function renderVerdict(body, c) {
     <h2 class="step-title">${passed ? "🎉 Situation Handled!" : "📨 Situation Filed"}</h2>
     ${aiFailures.length ? `<div class="ai-warning" role="alert">⚠️ <b>Your teacher will check part of this score.</b> The AI marker could not check: ${aiFailures.map((f) => escapeHtml(f.label || f.part)).join(", ")}. The score below uses an estimate for ${aiFailures.length > 1 ? "those parts" : "that part"}, and your teacher may update it.</div>`
       : (r.needsTeacherReview ? `<div class="ai-warning" role="status">⏳ Your teacher will take a look at this report too.</div>` : "")}
-    ${r.letterEdited ? `<div class="locked-note">✏️ Your edited letter is what was marked.</div>` : ""}
+    ${r.letterEdited ? `<div class="locked-note">✏️ Your edited ${docWord(c)} is what was marked.</div>` : ""}
     <div class="score-hero">
       ${moe ? `
         <div class="of">Exam-style estimate</div>
         <div class="big" aria-label="Exam-style estimate: ${escapeHtml(moe.total)} out of ${escapeHtml(moe.max || 14)}">${escapeHtml(moe.total)}<span class="of">/${escapeHtml(moe.max || 14)}</span></div>
-        <div class="est-rows">
-          <span class="est-pill">Task Fulfilment <b>${escapeHtml(moe.taskFulfilment.score)}/${escapeHtml(moe.taskFulfilment.max ?? 6)}</b></span>
-          <span class="est-pill">Language &amp; Organisation <b>${escapeHtml(moe.languageOrg.score)}/${escapeHtml(moe.languageOrg.max ?? 8)}</b></span>
+        <div class="gauge-row">
+          ${gaugeHtml(moe.taskFulfilment.score, moe.taskFulfilment.max ?? 6, "Task Fulfilment")}
+          ${gaugeHtml(moe.languageOrg.score, moe.languageOrg.max ?? 8, "Language & Organisation")}
         </div>
         <div class="est-note">This is an estimate — your teacher can adjust it.</div>
       ` : ""}
@@ -1514,7 +1686,7 @@ function renderVerdict(body, c) {
 
     ${fmt.length ? `
       <div class="v-section">
-        <h3>📋 Letter format</h3>
+        <h3>📋 ${docWord(c)[0].toUpperCase() + docWord(c).slice(1)} format</h3>
         <ul class="check-list">
           ${fmt.map((f) => `<li class="${f.ok ? "found" : "missing"}"><span class="st">${f.ok ? "✔ Good" : "✖ Check this"}</span><b>${escapeHtml(f.label)}</b>${f.detail ? ` — ${escapeHtml(f.detail)}` : ""}</li>`).join("")}
         </ul>
@@ -1532,7 +1704,7 @@ function renderVerdict(body, c) {
       </div>` : ""}
 
     <div class="v-section">
-      <h3>✉️ Your letter</h3>
+      <h3>${isArticleCase(c) ? "📰 Your article" : "✉️ Your letter"}</h3>
       ${evidences.length ? `<p class="field-note" style="margin:0 0 6px;">The <mark>highlighted</mark> sentences show where you used the required details.</p>` : ""}
       <div class="letter-preview">${highlightLetterHtml(r.assembledLetter, evidences)}</div>
     </div>

@@ -40,6 +40,19 @@
   .case-row{background:var(--card);border:1.5px solid var(--paper-shadow);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
   .imgprev{max-width:220px;display:block;margin-top:8px;border-radius:6px;border:1.5px solid var(--paper-shadow);}
   .hint{font-size:12px;color:#7a6a45;margin-top:2px;}
+  .tabbar{display:flex;gap:6px;overflow-x:auto;position:sticky;top:0;z-index:10;background:var(--navy);padding:8px 0;margin:0 0 14px;border-bottom:1px solid rgba(255,255,255,.15);}
+  .tabbar button{flex:0 0 auto;font-family:'Lexend';font-size:13.5px;font-weight:600;padding:9px 16px;border-radius:8px 8px 0 0;border:1.5px solid var(--paper-shadow);border-bottom:none;background:#33465a;color:#dbe4ee;cursor:pointer;}
+  .tabbar button.on{background:var(--paper);color:var(--navy);}
+  .tabpane[hidden]{display:none;}
+  .case-main{display:flex;gap:12px;align-items:flex-start;}
+  .case-thumb{flex:0 0 92px;width:92px;height:68px;border-radius:6px;border:1.5px solid var(--paper-shadow);object-fit:cover;background:var(--paper-dark,#DCCB9C);}
+  .case-thumb.none{display:flex;align-items:center;justify-content:center;font-size:11px;color:#7a6a45;text-align:center;line-height:1.2;padding:4px;border-style:dashed;}
+  .fmt-stamp{display:inline-block;font:600 10.5px 'Lexend';letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:4px;border:1.5px solid currentColor;margin-right:6px;}
+  .fmt-formal_letter{color:#1B2A38;} .fmt-informal_letter{color:#2e6b8f;} .fmt-article{color:#8a4b12;}
+  .vchip{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;margin-left:6px;}
+  .vchip.ok{background:#dcedcf;color:#254b18;} .vchip.warn{background:#fbeecb;color:#7a5a10;} .vchip.bad{background:#f6d6d0;color:#7a2016;}
+  .case-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  @media (max-width:560px){.wrap{padding:16px 10px 50px;}.panel{padding:18px 14px;}.case-thumb{flex-basis:64px;width:64px;height:50px;}}
   a.back{color:#9fb2c9;font-size:12px;text-decoration:none;}
   pre{background:#1b2a38;color:#cfe3d1;padding:12px;border-radius:8px;font-size:12px;overflow:auto;max-height:260px;}
   .topline{display:flex;justify-content:space-between;align-items:center;color:#c8d3de;font-size:12.5px;margin-bottom:10px;}
@@ -181,24 +194,119 @@ function renderLogin(msg) {
   $("#p").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#loginBtn").click(); });
 }
 
+function validationHtml(c) {
+  const v = c.validation; if (!v) return "";
+  const li = (arr, cls) => arr.map((t) => `<li class="${cls}">${escapeHtml(t)}</li>`).join("");
+  if (v.ok && !v.warnings.length) return "";
+  return `<ul class="hint" style="margin:4px 0 4px 18px;line-height:1.5;">${li(v.errors, "vErr").replace(/<li class="vErr">/g, '<li style="color:#a1211a;"><b>✖ </b>')}${li(v.warnings, "vWarn").replace(/<li class="vWarn">/g, '<li style="color:#8a5a00;">⚠ ')}</ul>`;
+}
+
+async function renderBackendPanel(el) {
+  el.innerHTML = `
+    <h1>🛠️ Manual backend upload</h1>
+    <p class="hint">Use this when the AI case builder fails or you prefer to author cases outside the app. Flow: (1) get an external AI to write a SQL file, (2) run it in the Cloudflare D1 console, (3) attach the picture here, (4) publish.</p>
+    <h3>1. Prepare the database (once)</h3>
+    <ol class="hint" style="line-height:1.6;">
+      <li>Open this teacher page once after each deployment. It adds the <code>format</code> column automatically.</li>
+      <li>If your SQL fails with "no column named format", run this first in the D1 console: <code>ALTER TABLE cases ADD COLUMN format TEXT;</code></li>
+    </ol>
+    <h3>2. Get the SQL from an external AI</h3>
+    <div class="row" style="align-items:center;">
+      <label class="hint" style="margin:0;">Case format
+        <select id="bkFormat"><option value="formal_letter">Formal letter</option><option value="informal_letter">Informal letter</option><option value="article">Article</option></select>
+      </label>
+      <button class="btn small primary" id="bkCopy">📋 Copy prompt</button>
+      <a class="btn small" href="/AI_CASE_TO_D1_SQL_PROMPT.md" target="_blank" rel="noopener">Open prompt file</a>
+    </div>
+    <p class="hint" id="bkCopyStatus"></p>
+    <p class="hint">Paste the prompt into an AI chat, then replace the CASE BRIEF section with your task text, stimulus points and own-idea requirement. Ask it to return SQL only. Read the result before running it: check dates, times and which option is correct.</p>
+    <h3>3. Run the SQL in Cloudflare</h3>
+    <ol class="hint" style="line-height:1.6;">
+      <li>Cloudflare dashboard → Storage &amp; databases → D1 SQL database → your database → <b>Console</b> tab.</li>
+      <li>Paste the SQL and click <b>Execute</b>. The case arrives as a <b>draft</b>.</li>
+      <li>If it says "UNIQUE constraint failed", the case id already exists; change the id and rerun.</li>
+    </ol>
+    <h3>4. Attach the picture and publish</h3>
+    <p class="hint">Cases imported by SQL have no picture. Choose the case, upload the image (under about 500 KB), then Publish. Attaching a picture returns a case to draft, so publish last.</p>
+    <div id="bkCases">Loading…</div>`;
+  let promptText = "";
+  $("#bkCopy").addEventListener("click", async () => {
+    const st = $("#bkCopyStatus");
+    try {
+      if (!promptText) { const r = await fetch("/AI_CASE_TO_D1_SQL_PROMPT.md"); if (!r.ok) throw new Error("HTTP " + r.status); promptText = await r.text(); }
+      const fmt = $("#bkFormat").value;
+      const text = `TARGET FORMAT: set format = '${fmt}' (and formal = ${fmt === "formal_letter" ? 1 : 0}). ${fmt === "article" ? "Use the ARTICLE component keys." : "Use the 13 letter component keys."}\n\n` + promptText;
+      await navigator.clipboard.writeText(text);
+      st.textContent = "Copied. Paste it into your AI tool.";
+    } catch (e) { st.textContent = "Copy failed (" + e.message + "). Use 'Open prompt file' and copy manually."; }
+  });
+  const holder = $("#bkCases");
+  async function loadCases() {
+    try {
+      const data = await api("/api/admin/cases");
+      const list = data.cases || [];
+      holder.innerHTML = list.length ? list.map((c) => `
+        <div class="component" style="margin:6px 0;">
+          <b>${escapeHtml(c.title)}</b> <span class="tag">${escapeHtml(c.status)}</span> <span class="hint">${c.imageData ? "picture attached" : "no picture"} · <code>${escapeHtml(c.id)}</code></span>
+          ${validationHtml(c)}
+          <div class="row">
+            <input type="file" accept="image/*" data-bk-file="${escapeHtmlAttr(c.id)}"/>
+            ${c.status !== "published" && !(c.validation && !c.validation.ok) ? `<button class="btn small primary" data-bk-pub="${escapeHtmlAttr(c.id)}">Publish</button>` : ""}
+            <span class="hint" data-bk-status="${escapeHtmlAttr(c.id)}"></span>
+          </div>
+        </div>`).join("") : `<p class="hint">No cases yet.</p>`;
+      $$("[data-bk-file]", holder).forEach((inp) => inp.addEventListener("change", () => {
+        const id = inp.dataset.bkFile, st = holder.querySelector(`[data-bk-status="${id}"]`), f = inp.files?.[0];
+        if (!f) return;
+        if (!f.type.startsWith("image/")) { st.textContent = "Choose an image file."; return; }
+        if (f.size > 550000) { st.textContent = "Keep the image under about 500 KB."; inp.value = ""; return; }
+        const rd = new FileReader();
+        rd.onload = async () => {
+          st.textContent = "Uploading…";
+          try { await api(`/api/admin/cases/${id}/image`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ imageData: rd.result }) }); await loadCases(); }
+          catch (e) { st.textContent = "Failed: " + e.message; }
+        };
+        rd.readAsDataURL(f);
+      }));
+      $$("[data-bk-pub]", holder).forEach((b) => b.addEventListener("click", async () => {
+        const st = holder.querySelector(`[data-bk-status="${b.dataset.bkPub}"]`);
+        try { if (await publishCaseWithGuard(b.dataset.bkPub)) await loadCases(); } catch (e) { st.textContent = "Failed: " + e.message; }
+      }));
+    } catch (e) { holder.innerHTML = `<p class="hint">Could not load cases: ${escapeHtml(e.message)}</p>`; }
+  }
+  loadCases();
+}
+
 async function renderDashboard(msg) {
   app.innerHTML = `
     <div class="topline">
       <div>Signed in as <b>${escapeHtml(me.username)}</b> <span class="tag">${me.role === "admin" ? "Admin" : "Teacher"}</span></div>
       <div class="row">
-        <span class="hint" style="margin:0;">v1.14</span>
+        <span class="hint" style="margin:0;">v2.0</span>
         <button class="btn small" id="logoutBtn">Log out</button>
       </div>
     </div>
     ${msg ? `<div class="msg ${msg.error ? "error" : "ok"}">${escapeHtml(msg.text)}</div>` : ""}
+    <nav class="tabbar" id="mainTabs" role="tablist" aria-label="Teacher sections">
+      <button type="button" role="tab" data-tab="results">📊 Results</button>
+      <button type="button" role="tab" data-tab="cases">📁 Cases</button>
+      <button type="button" role="tab" data-tab="settings">⚙️ Settings</button>
+      <button type="button" role="tab" data-tab="backend">🛠️ Manual backend upload</button>
+    </nav>
+    <div id="tab-backend" class="tabpane" hidden><div class="panel" id="backendPanel"></div></div>
+    <div id="tab-results" class="tabpane" hidden>
     <div class="panel" id="gradingPanel"></div>
     <div class="panel" id="overviewPanel"></div>
+    </div>
+    <div id="tab-settings" class="tabpane" hidden>
     <div class="panel" id="rubricPanel"></div>
     <div class="panel" id="aiHealthPanel"></div>
     <div class="panel" id="studentAccessPanel"></div>
     <div class="panel" id="tutorialAccessPanel"></div>
     <div class="panel" id="levelsAccessPanel"></div>
     ${me.role === "admin" ? `<div class="panel" id="teachersPanel"></div>` : ""}
+    </div>
+    <div id="tab-cases" class="tabpane" hidden>
     <div class="panel">
       <h1>📁 Situation File Manager</h1>
       <h3>Existing practice cases</h3>
@@ -209,7 +317,25 @@ async function renderDashboard(msg) {
       <p class="hint">Fill in the fields below. AI will build the clickable clues, MCQ letter options and marking key for you as a draft — review it below, regenerate any single part that doesn't read well, then publish it when you're happy.</p>
       <form id="caseForm"></form>
     </div>
+    </div>
   `;
+  const TABS = ["results", "cases", "settings", "backend"];
+  const showTab = (name) => {
+    if (!TABS.includes(name)) name = "cases";
+    TABS.forEach((t) => { const pane = $("#tab-" + t); if (pane) pane.hidden = t !== name; });
+    $$("#mainTabs [data-tab]").forEach((x) => { const on = x.dataset.tab === name; x.classList.toggle("on", on); x.setAttribute("aria-selected", on); x.tabIndex = on ? 0 : -1; });
+    try { sessionStorage.setItem("adminTab", name); } catch (e) { /* ignore */ }
+    if (name === "backend") renderBackendPanel($("#backendPanel"));
+  };
+  $$("#mainTabs [data-tab]").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
+  $("#mainTabs").addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    const cur = TABS.indexOf(sessionStorage.getItem("adminTab") || "cases");
+    const nxt = TABS[(cur + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length];
+    showTab(nxt); $(`#mainTabs [data-tab="${nxt}"]`).focus();
+  });
+  let startTab = "cases"; try { startTab = sessionStorage.getItem("adminTab") || "cases"; } catch (e) { /* ignore */ }
+  showTab(startTab);
   $("#logoutBtn").addEventListener("click", () => { token = null; me = null; sessionStorage.removeItem("adminToken"); sessionStorage.removeItem("adminMe"); renderLogin(); });
 
   renderGradingPanel($("#gradingPanel"));
@@ -336,7 +462,7 @@ async function renderOverviewPanel(panel) {
       const errData = await api("/api/admin/letter-errors?class=" + encodeURIComponent(select.value));
       renderLetterErrors(errArea, errData);
     } catch (e) {
-      errArea.innerHTML = `<h3 style="margin-top:22px;">✍️ Common letter mistakes</h3><p class="hint">Could not load: ${escapeHtml(e.message)}</p>`;
+      errArea.innerHTML = `<h3 style="margin-top:22px;">✍️ Common writing mistakes</h3><p class="hint">Could not load: ${escapeHtml(e.message)}</p>`;
     }
   };
   select.addEventListener("change", loadAll);
@@ -346,10 +472,10 @@ async function renderOverviewPanel(panel) {
 function renderLetterErrors(container, data) {
   const items = data.errors || [];
   const total = Number(data.totalSubmissions) || 0;
-  const note = `<p class="hint">Mistakes detected in pupils' <b>final letters</b> (not their multiple-choice picks), based on the last ${total} submission${total === 1 ? "" : "s"} for ${escapeHtml(data.class)}.</p>`;
-  const head = `<h3 style="margin-top:22px;">✍️ Common letter mistakes in ${escapeHtml(data.class)}</h3>`;
+  const note = `<p class="hint">Mistakes detected in pupils' <b>final letters and articles</b> (not their multiple-choice picks), based on the last ${total} submission${total === 1 ? "" : "s"} for ${escapeHtml(data.class)}.</p>`;
+  const head = `<h3 style="margin-top:22px;">✍️ Common writing mistakes in ${escapeHtml(data.class)}</h3>`;
   if (!items.length) {
-    container.innerHTML = head + note + `<p class="hint">No common letter mistakes found yet. Once pupils submit v1.14 letters, the most frequent mistakes will show here.</p>`;
+    container.innerHTML = head + note + `<p class="hint">No common writing mistakes found yet. Once pupils submit letters or articles, the most frequent mistakes will show here.</p>`;
     return;
   }
   const maxPct = Math.max(1, ...items.map((e) => Number(e.pct) || 0));
@@ -849,17 +975,20 @@ async function refreshCaseList(reopen) {
 function failedLabelsFor(c) {
   return ((c.buildFlags && c.buildFlags.failedParts) || []).map(partLabelClient);
 }
+const ARTICLE_ONLY = new Set(["headline","byline","hook","cta","thanks"]);
 function partLabelClient(key) {
   if (key === "taskChunks") return "Step 1 clue tags";
   if (key === "stimulus") return "Step 2 distractor tiles";
-  const k = MANUAL_COMPONENT_KEYS.indexOf(key);
-  return k >= 0 ? `Step 4 part ${k + 1} (${key})` : key;
+  const k = ALL_COMPONENT_KEYS.indexOf(key);
+  const inArticle = ARTICLE_COMPONENT_KEYS.indexOf(key), inLetter = MANUAL_COMPONENT_KEYS.indexOf(key);
+  const n = (inArticle >= 0 && ARTICLE_ONLY.has(key)) ? inArticle : inLetter >= 0 ? inLetter : inArticle;
+  return k >= 0 ? `Step 4 part ${n + 1} (${key})` : key;
 }
 
 function renderEditPanel(panel, c, openSteps = []) {
   panel.style.display = "block";
   const failed = (c.buildFlags && c.buildFlags.failedParts) || [];
-  const compFlagged = failed.filter((k) => MANUAL_COMPONENT_KEYS.includes(k));
+  const compFlagged = failed.filter((k) => ALL_COMPONENT_KEYS.includes(k));
   const comps = (c.components || []).slice(0, 13).map((comp) => ({
     key: comp.key, label: comp.label, options: comp.options, correctId: (c.answerKey?.components?.[comp.key]) || "a",
   }));
@@ -1001,9 +1130,12 @@ function buildMarkingPrompt(d) {
     ? d.acceptableIdeas.map((g) => `- ${g.map(clean).join(" / ")}`).join("\n")
     : "none given";
   const ownIdea = clean(d.ownContent) || "(the pupil left this blank)";
-  const letter = need(d.letter, "pupil's letter");
+  const fmtName = d.format || (d.formal === undefined ? "" : d.formal ? "formal_letter" : "informal_letter");
+  const article = fmtName === "article";
+  const doc = article ? "article" : "letter";
+  const letter = need(d.letter, `pupil's ${doc}`);
   let letterType = NA;
-  if (d.formal === undefined) gaps.push("letter type"); else letterType = d.formal ? "FORMAL" : "INFORMAL";
+  if (!fmtName) gaps.push("writing format"); else letterType = ({ formal_letter: "FORMAL LETTER/EMAIL", informal_letter: "INFORMAL LETTER/EMAIL", article: "ARTICLE for a wider audience (e.g. schoolmates). It needs NO salutation or sign-off; it should have a headline, a byline with the writer's full name, an engaging opening, points woven into flowing paragraphs, a call to action and thanks to the readers. Tone: friendly and enthusiastic, but with proper grammar (no text-speak)." })[fmtName];
 
   const text = `You are an experienced Primary 6 English teacher in Singapore, marking a pupil's SITUATIONAL WRITING task in the style of the PSLE. Mark fairly and consistently, as a careful human examiner would. Mark ONLY the items listed below.
 
@@ -1011,7 +1143,7 @@ function buildMarkingPrompt(d) {
 Question prompt shown to the pupil:
 ${task}
 
-Letter type: ${letterType}
+Writing format: ${letterType}
 
 Required facts from the notice (the letter must state these accurately):
 ${keyInfo}
@@ -1032,13 +1164,13 @@ Pupil's own idea (typed separately):
 ${ownIdea}
 PUPIL_TEXT>>>
 
-Pupil's final letter:
+Pupil's final ${doc}:
 <<<PUPIL_TEXT
 ${letter}
 PUPIL_TEXT>>>
 
 === WHAT TO MARK ===
-A. PURPOSE, AUDIENCE, CONTEXT (true/false each): does the letter clearly show the purpose of writing, address the right audience in a suitable tone and register, and fit the context given in the question prompt?
+A. PURPOSE, AUDIENCE, CONTEXT (true/false each): does the ${doc} clearly show the purpose of writing, address the right audience in a suitable tone and register, and fit the context given in the question prompt?
 
 B. KEY FACTS: for each numbered required fact, say whether the letter states it correctly (OK), leaves it out (MISSING) or gets it wrong (WRONG). Do not penalise different wording that is accurate.
 
@@ -1240,16 +1372,23 @@ function renderCaseList(cases) {
     const failedN = ((c.buildFlags && c.buildFlags.failedParts) || []).length;
     return `
     <div class="case-row" style="flex-direction:column;align-items:stretch;">
-      <div class="row" style="justify-content:space-between;">
-        <div>
-          <b>${escapeHtml(c.title)}</b> <span class="hint">(${c.formal ? "Formal" : "Informal"})</span>
-          <span class="draft-badge" style="${c.status === "published" ? "background:var(--green);" : ""}">${c.status === "published" ? "Published" : "Draft"}</span>
+      <div class="case-main">
+        ${/^data:image\//.test(c.imageData || "") ? `<img class="case-thumb" src="${escapeHtmlAttr(c.imageData)}" alt="Picture for ${escapeHtmlAttr(c.title)}" loading="lazy"/>` : `<div class="case-thumb none">No picture yet</div>`}
+        <div style="flex:1;min-width:0;">
+          <b>${escapeHtml(c.title)}</b>
+          <div style="margin-top:4px;">
+          ${(() => { const f = c.format || (c.formal ? "formal_letter" : "informal_letter"); return `<span class="fmt-stamp fmt-${escapeHtmlAttr(f)}">${({ formal_letter: "Formal letter", informal_letter: "Informal letter", article: "Article" })[f] || "Letter"}</span>`; })()}
+          <span class="draft-badge" style="margin-left:0;${c.status === "published" ? "background:var(--green);" : ""}">${c.status === "published" ? "Published" : "Draft"}</span>
+          ${c.validation ? (!c.validation.ok ? `<span class="vchip bad">✖ ${c.validation.errors.length} problem${c.validation.errors.length === 1 ? "" : "s"}</span>` : c.validation.warnings.length ? `<span class="vchip warn">⚠ ${c.validation.warnings.length} to check</span>` : `<span class="vchip ok">✔ ready</span>`) : ""}
           ${failedN ? `<span class="badge-red" title="${escapeHtmlAttr(failedLabelsFor(c).join(", "))}">⚠ AI failed on ${failedN} part${failedN === 1 ? "" : "s"} — fix manually</span>` : ""}
+          </div>
         </div>
-        <div class="row">
-          ${c.status !== "published" ? `<button class="btn small primary" data-action="publish" data-id="${c.id}">Publish</button>` : ""}
-          <button class="btn small" data-action="regen-toggle" data-id="${c.id}">🔄 Regenerate a part</button>
-          <button class="btn small ${failedN ? "primary" : ""}" data-action="edit-toggle" data-id="${c.id}">✏️ Edit case (Steps 1–4)</button>
+      </div>
+      <div>
+        <div class="case-actions">
+          ${c.status !== "published" && !(c.validation && !c.validation.ok) ? `<button class="btn small primary" data-action="publish" data-id="${c.id}">Publish</button>` : ""}
+          ${c.broken ? "" : `<button class="btn small" data-action="regen-toggle" data-id="${c.id}">🔄 Regenerate a part</button>`}
+          ${c.broken ? "" : `<button class="btn small ${failedN ? "primary" : ""}" data-action="edit-toggle" data-id="${c.id}">✏️ Edit case (Steps 1–4)</button>`}
           <button class="btn small" data-action="image-toggle" data-id="${c.id}">🖼️ ${c.imageData ? "Replace" : "Add"} picture</button>
           <button class="btn small" data-action="delete" data-id="${c.id}">Delete</button>
         </div>
@@ -1257,6 +1396,7 @@ function renderCaseList(cases) {
       <p class="hint" style="margin:4px 0 0;">
         Built by ${escapeHtml(c.created_by || "unknown")}${c.approved_by ? ` · Published by ${escapeHtml(c.approved_by)}` : ""}
       </p>
+      ${validationHtml(c)}
       <div class="regen-panel" data-panel-for="${c.id}" style="display:none;"></div>
       <div class="edit-panel" data-edit-for="${c.id}" style="display:none;"></div>
       <div class="image-panel" data-image-for="${c.id}" style="display:none;"></div>
@@ -1369,7 +1509,20 @@ function renderRegenPanel(panel, c) {
 }
 
 
-function manualFallbackComponentSet(key, scaffold, formal) {
+function manualFallbackComponentSet(key, scaffold, fmt) {
+  const formal = fmt === true || fmt === "formal_letter";
+  if (fmt === "article") {
+    const art = {
+      headline: { correct: "Come and Join Us for a Day to Remember!", distractors: ["Event Details.", "A Very Long Notice About Something That Is Happening At School Soon"] },
+      byline: { correct: "By Wei Ming Tan", distractors: ["By Wei Ming", "By A Concerned Club"] },
+      hook: { correct: "Have you ever wished for a chance to try something completely new at school?", distractors: ["There is an event at school.", "Nobody ever comes to these events, but I am telling you anyway."] },
+      purpose: { correct: "I am excited to share the details with you and to encourage every one of you to take part.", distractors: ["I am writing to complain that nobody ever tells us anything about the event.", "I want to talk about school and a few other things in general."] },
+      context: { correct: "As a member of our school community, I have seen how much events like this mean to all of us.", distractors: ["I have been very busy lately, so I only have a little to say.", "I know this may not matter much, but I thought I should mention it."] },
+      cta: { correct: "So why not take part and sign up today?", distractors: ["Maybe you can come if you have nothing else to do.", "You must sign up now or you will be sorry."] },
+      thanks: { correct: "Thank you for reading, and I hope to see you there!", distractors: ["That is all, bye.", "Thx 4 reading, c u there!"] },
+    };
+    if (art[key]) return art[key];
+  }
   const pts = scaffold.stimulusPoints || [];
   const pt = (n) => pts[n - 1]?.text || `Include the ${n === 1 ? "first" : n === 2 ? "second" : n === 3 ? "third" : n === 4 ? "fourth" : "fifth"} important detail from the situation.`;
   if (key === "salutation") return { correct: formal ? "Dear Sir/Madam," : "Hi there,", distractors: ["Dear friend,", "Hey everyone,"] };
@@ -1395,16 +1548,29 @@ function manualFallbackComponentSet(key, scaffold, formal) {
   return { correct: "This is the most suitable sentence for this part.", distractors: ["This does not fit the task.", "This is unrelated to the situation."] };
 }
 
-function buildManualPreviewParts(scaffold, formal) {
+function buildManualPreviewParts(scaffold, fmt) {
+  if (fmt === "article") {
+    return ARTICLE_COMPONENT_KEYS.map((key, i) => {
+      const set = manualFallbackComponentSet(key, scaffold, "article");
+      return { key, label: ARTICLE_LABELS[i], options: [set.correct, ...(set.distractors || [])].slice(0,3).map((text, j) => ({ id: ["a","b","c"][j], text })), correctId: "a" };
+    });
+  }
+  const formal = fmt === true || fmt === "formal_letter";
   const keys = ["salutation","greeting","purpose","context","keyinfo1","keyinfo2","keyinfo3","keyinfo4","keyinfo5","ownIdea","closing","signoff","name"];
   const labels = ["Salutation (Audience)", formal ? "Introduction (formal)" : "Greeting (informal)", "Purpose","Context","Key information 1","Key information 2","Key information 3","Key information 4","Key information 5","Own idea","Closing sentence","Sign-off","Name"];
   return keys.map((key, i) => {
-    const set = manualFallbackComponentSet(key, scaffold, formal);
+    const set = manualFallbackComponentSet(key, scaffold, formal ? "formal_letter" : "informal_letter");
     return { key, label: labels[i], options: [set.correct, ...(set.distractors || [])].slice(0,3).map((text, j) => ({ id: ["a","b","c"][j], text })), correctId: "a" };
   });
 }
 
 const MANUAL_COMPONENT_KEYS = ["salutation","greeting","purpose","context","keyinfo1","keyinfo2","keyinfo3","keyinfo4","keyinfo5","ownIdea","closing","signoff","name"];
+// v1.15: an article's 13 parts (headline + byline replace salutation/greeting; call to action + thanks replace closing/sign-off/name)
+const ARTICLE_COMPONENT_KEYS = ["headline","byline","hook","purpose","context","keyinfo1","keyinfo2","keyinfo3","keyinfo4","keyinfo5","ownIdea","cta","thanks"];
+const ALL_COMPONENT_KEYS = Array.from(new Set([...MANUAL_COMPONENT_KEYS, ...ARTICLE_COMPONENT_KEYS]));
+const manualKeysFor = (format) => (format === "article" ? ARTICLE_COMPONENT_KEYS : MANUAL_COMPONENT_KEYS);
+const ARTICLE_LABELS = ["Headline","Byline (your full name)","Opening hook","Purpose","Context","Key information 1","Key information 2","Key information 3","Key information 4","Key information 5","Own idea","Call to action","Thanks to readers"];
+const currentFormat = (form) => $("input[name=format]:checked", form).value;
 
 /** The manual case builder: one editor per pupil-facing step (1 Briefing,
  * 2 Evidence incl. required points + up to 12 tiles, 3 Hint, 4 the 13 parts),
@@ -1439,7 +1605,7 @@ function openManualEditor(form, { parts, getImageData, sourceLabel, extras }) {
     const taskText = $("#f_task", form).value.trim();
     const modelLetter = $("#f_model", form).value.trim();
     const keyInfo = keyInfoNow();
-    const formal = $("input[name=formal]:checked", form).value === "1";
+    const format = currentFormat(form), formal = format === "formal_letter";
     const { components } = partsEd.get();
     const taskChunks = chunkEd.get();
     const ev = evEd.get();
@@ -1451,7 +1617,7 @@ function openManualEditor(form, { parts, getImageData, sourceLabel, extras }) {
     msg.textContent = "Saving…";
     try {
       const payload = {
-        title, taskText, keyInfo, formal,
+        title, taskText, keyInfo, formal, format,
         ownContentPrompt: $("#f_ownprompt", form).value.trim(),
         ownContentIdeas: $("#f_ownideas", form).value.split("\n").map((s) => s.trim()).filter(Boolean),
         modelLetter, imageData: getImageData(), components,
@@ -1471,8 +1637,8 @@ function openManualEditor(form, { parts, getImageData, sourceLabel, extras }) {
  * the editor and the manual-case API expect. Position in the array (not
  * any field on the object) determines which of the 13 fixed keys it is,
  * matching the server's FIXED_COMPONENT_KEYS ordering. */
-function importedComponentToEditorPart(raw, i) {
-  const key = MANUAL_COMPONENT_KEYS[i];
+function importedComponentToEditorPart(raw, i, format) {
+  const key = manualKeysFor(format)[i];
   const opts = Array.isArray(raw?.options) ? raw.options.slice(0, 3) : [];
   while (opts.length < 3) opts.push("");
   const idx = [0,1,2].includes(raw?.correctIndex) ? raw.correctIndex : 0;
@@ -1515,10 +1681,11 @@ function renderForm(form) {
     <div id="keyInfoList"></div>
     <button type="button" class="btn small" id="addKeyInfo">+ Add key info point</button>
 
-    <label>Register</label>
+    <label>Writing format</label>
     <div class="radio-row">
-      <label><input type="radio" name="formal" value="1" checked/> Formal (e.g. to a teacher, editor, stranger)</label>
-      <label><input type="radio" name="formal" value="0"/> Informal (e.g. to a friend)</label>
+      <label><input type="radio" name="format" value="formal_letter" checked/> Formal letter / email (e.g. to a teacher, editor, stranger)</label>
+      <label><input type="radio" name="format" value="informal_letter"/> Informal letter / email (e.g. to a friend)</label>
+      <label><input type="radio" name="format" value="article"/> Article (for schoolmates or neighbours: headline, byline, call to action)</label>
     </div>
 
     <label>"Own content" question (the idea pupils must invent themselves)</label>
@@ -1565,13 +1732,13 @@ function renderForm(form) {
     const taskText = $("#f_task", form).value.trim();
     const modelLetter = $("#f_model", form).value.trim();
     const keyInfo = $$("#keyInfoList input", form).map((i) => i.value.trim()).filter(Boolean);
-    const formal = $("input[name=formal]:checked", form).value === "1";
+    const format = currentFormat(form), formal = format === "formal_letter";
     if (!title || !taskText || !modelLetter || keyInfo.length < 5) {
       $("#formMsg", form).innerHTML = `<div class="msg error">Please fill in title, question prompt, all 5 key information points, and the model letter first.</div>`;
       return;
     }
     const scaffold = { taskText, task_text: taskText, stimulusPoints: keyInfo.slice(0,5).map((text,i)=>({id:`s${i+1}`,text,relevant:true})), ownContentPrompt: $("#f_ownprompt", form).value.trim(), ownContentKeywords: $("#f_ownideas", form).value.split("\n").map(s=>[s.trim()]).filter(g=>g[0]) };
-    const parts = buildManualPreviewParts(scaffold, formal);
+    const parts = buildManualPreviewParts(scaffold, format);
     openManualEditor(form, { parts, getImageData: () => imageData });
   });
 
@@ -1592,10 +1759,11 @@ function renderForm(form) {
       $("#f_model", form).value = data.modelLetter;
       $("#f_ownprompt", form).value = data.ownContentPrompt || "";
       $("#f_ownideas", form).value = Array.isArray(data.ownContentIdeas) ? data.ownContentIdeas.join("\n") : "";
-      $(`input[name=formal][value="${data.formal ? "1" : "0"}"]`, form).checked = true;
+      const importFormat = ["formal_letter", "informal_letter", "article"].includes(data.format) ? data.format : (data.formal ? "formal_letter" : "informal_letter");
+      $(`input[name=format][value="${importFormat}"]`, form).checked = true;
       const rows = $$("#keyInfoList input", form);
       data.keyInfo.forEach((v, i) => { if (rows[i]) rows[i].value = v; });
-      const parts = data.components.map(importedComponentToEditorPart);
+      const parts = data.components.map((raw, i) => importedComponentToEditorPart(raw, i, data.format));
       msg.innerHTML = `<div class="msg ok">Loaded "${escapeHtml(data.title)}". Review the 13 parts below, attach a stimulus picture, then save.</div>`;
       openManualEditor(form, {
         parts, getImageData: () => imageData, sourceLabel: file.name,
@@ -1613,7 +1781,7 @@ function renderForm(form) {
     while (keyInfo.length < 5) keyInfo.push("");
     if (keyInfo.length > 5) keyInfo.length = 5;
     const usableKeyInfo = keyInfo.filter(Boolean);
-    const formal = $("input[name=formal]:checked", form).value === "1";
+    const format = currentFormat(form), formal = format === "formal_letter";
     const ownContentPrompt = $("#f_ownprompt", form).value.trim();
     const ownContentIdeas = $("#f_ownideas", form).value.split("\n").map((s) => s.trim()).filter(Boolean);
 
@@ -1629,7 +1797,7 @@ function renderForm(form) {
       const res = await api("/api/admin/cases", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ title, taskText, keyInfo: usableKeyInfo, formal, ownContentPrompt, ownContentIdeas, modelLetter, imageData }),
+        body: JSON.stringify({ title, taskText, keyInfo: usableKeyInfo, formal, format, ownContentPrompt, ownContentIdeas, modelLetter, imageData }),
       });
       const aiSummary = res.aiUsed
         ? "fully AI-assisted"
@@ -1646,7 +1814,7 @@ function renderForm(form) {
       // parts fell back to template text, and offer to fix them right now.
       const failedParts = res.failedParts || [];
       if (failedParts.length) {
-        const step4 = failedParts.filter((k) => MANUAL_COMPONENT_KEYS.includes(k));
+        const step4 = failedParts.filter((k) => ALL_COMPONENT_KEYS.includes(k));
         msgEl.innerHTML += `<div class="flag-red" role="alert">⚠ <b>The AI could not build ${failedParts.length} part${failedParts.length === 1 ? "" : "s"} of this case.</b> Template text was put in ${failedParts.length === 1 ? "its" : "their"} place${step4.length ? `, including <b>${step4.length} of the 13 Step 4 letter parts</b>` : ""}, so the options there are generic and need your attention:<br>${failedParts.map((k) => "• " + escapeHtml(partLabelClient(k))).join("<br>")}<br><button type="button" class="btn small primary" id="fixNow">✏️ Fix these parts now</button> <span class="hint">The case is flagged in the list below until they are fixed.</span></div>`;
         $("#fixNow", form).addEventListener("click", async () => {
           const steps = [];
