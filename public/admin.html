@@ -40,19 +40,6 @@
   .case-row{background:var(--card);border:1.5px solid var(--paper-shadow);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
   .imgprev{max-width:220px;display:block;margin-top:8px;border-radius:6px;border:1.5px solid var(--paper-shadow);}
   .hint{font-size:12px;color:#7a6a45;margin-top:2px;}
-  .tabbar{display:flex;gap:6px;overflow-x:auto;position:sticky;top:0;z-index:10;background:var(--navy);padding:8px 0;margin:0 0 14px;border-bottom:1px solid rgba(255,255,255,.15);}
-  .tabbar button{flex:0 0 auto;font-family:'Lexend';font-size:13.5px;font-weight:600;padding:9px 16px;border-radius:8px 8px 0 0;border:1.5px solid var(--paper-shadow);border-bottom:none;background:#33465a;color:#dbe4ee;cursor:pointer;}
-  .tabbar button.on{background:var(--paper);color:var(--navy);}
-  .tabpane[hidden]{display:none;}
-  .case-main{display:flex;gap:12px;align-items:flex-start;}
-  .case-thumb{flex:0 0 92px;width:92px;height:68px;border-radius:6px;border:1.5px solid var(--paper-shadow);object-fit:cover;background:var(--paper-dark,#DCCB9C);}
-  .case-thumb.none{display:flex;align-items:center;justify-content:center;font-size:11px;color:#7a6a45;text-align:center;line-height:1.2;padding:4px;border-style:dashed;}
-  .fmt-stamp{display:inline-block;font:600 10.5px 'Lexend';letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:4px;border:1.5px solid currentColor;margin-right:6px;}
-  .fmt-formal_letter{color:#1B2A38;} .fmt-informal_letter{color:#2e6b8f;} .fmt-article{color:#8a4b12;}
-  .vchip{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;margin-left:6px;}
-  .vchip.ok{background:#dcedcf;color:#254b18;} .vchip.warn{background:#fbeecb;color:#7a5a10;} .vchip.bad{background:#f6d6d0;color:#7a2016;}
-  .case-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
-  @media (max-width:560px){.wrap{padding:16px 10px 50px;}.panel{padding:18px 14px;}.case-thumb{flex-basis:64px;width:64px;height:50px;}}
   a.back{color:#9fb2c9;font-size:12px;text-decoration:none;}
   pre{background:#1b2a38;color:#cfe3d1;padding:12px;border-radius:8px;font-size:12px;overflow:auto;max-height:260px;}
   .topline{display:flex;justify-content:space-between;align-items:center;color:#c8d3de;font-size:12.5px;margin-bottom:10px;}
@@ -194,13 +181,6 @@ function renderLogin(msg) {
   $("#p").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#loginBtn").click(); });
 }
 
-function validationHtml(c) {
-  const v = c.validation; if (!v) return "";
-  const li = (arr, cls) => arr.map((t) => `<li class="${cls}">${escapeHtml(t)}</li>`).join("");
-  if (v.ok && !v.warnings.length) return "";
-  return `<ul class="hint" style="margin:4px 0 4px 18px;line-height:1.5;">${li(v.errors, "vErr").replace(/<li class="vErr">/g, '<li style="color:#a1211a;"><b>✖ </b>')}${li(v.warnings, "vWarn").replace(/<li class="vWarn">/g, '<li style="color:#8a5a00;">⚠ ')}</ul>`;
-}
-
 async function renderBackendPanel(el) {
   el.innerHTML = `
     <h1>🛠️ Manual backend upload</h1>
@@ -248,10 +228,9 @@ async function renderBackendPanel(el) {
       holder.innerHTML = list.length ? list.map((c) => `
         <div class="component" style="margin:6px 0;">
           <b>${escapeHtml(c.title)}</b> <span class="tag">${escapeHtml(c.status)}</span> <span class="hint">${c.imageData ? "picture attached" : "no picture"} · <code>${escapeHtml(c.id)}</code></span>
-          ${validationHtml(c)}
           <div class="row">
             <input type="file" accept="image/*" data-bk-file="${escapeHtmlAttr(c.id)}"/>
-            ${c.status !== "published" && !(c.validation && !c.validation.ok) ? `<button class="btn small primary" data-bk-pub="${escapeHtmlAttr(c.id)}">Publish</button>` : ""}
+            ${c.status !== "published" ? `<button class="btn small primary" data-bk-pub="${escapeHtmlAttr(c.id)}">Publish</button>` : ""}
             <span class="hint" data-bk-status="${escapeHtmlAttr(c.id)}"></span>
           </div>
         </div>`).join("") : `<p class="hint">No cases yet.</p>`;
@@ -282,31 +261,25 @@ async function renderDashboard(msg) {
     <div class="topline">
       <div>Signed in as <b>${escapeHtml(me.username)}</b> <span class="tag">${me.role === "admin" ? "Admin" : "Teacher"}</span></div>
       <div class="row">
-        <span class="hint" style="margin:0;">v2.0</span>
+        <span class="hint" style="margin:0;">v1.15</span>
         <button class="btn small" id="logoutBtn">Log out</button>
       </div>
     </div>
     ${msg ? `<div class="msg ${msg.error ? "error" : "ok"}">${escapeHtml(msg.text)}</div>` : ""}
-    <nav class="tabbar" id="mainTabs" role="tablist" aria-label="Teacher sections">
-      <button type="button" role="tab" data-tab="results">📊 Results</button>
-      <button type="button" role="tab" data-tab="cases">📁 Cases</button>
-      <button type="button" role="tab" data-tab="settings">⚙️ Settings</button>
-      <button type="button" role="tab" data-tab="backend">🛠️ Manual backend upload</button>
-    </nav>
-    <div id="tab-backend" class="tabpane" hidden><div class="panel" id="backendPanel"></div></div>
-    <div id="tab-results" class="tabpane" hidden>
+    <div class="row" id="mainTabs" style="margin:10px 0;">
+      <button class="btn small primary" data-tab="main">Cases &amp; settings</button>
+      <button class="btn small" data-tab="backend">Manual backend upload</button>
+    </div>
+    <div id="tabBackend" style="display:none;"><div class="panel" id="backendPanel"></div></div>
+    <div id="tabMain">
     <div class="panel" id="gradingPanel"></div>
     <div class="panel" id="overviewPanel"></div>
-    </div>
-    <div id="tab-settings" class="tabpane" hidden>
     <div class="panel" id="rubricPanel"></div>
     <div class="panel" id="aiHealthPanel"></div>
     <div class="panel" id="studentAccessPanel"></div>
     <div class="panel" id="tutorialAccessPanel"></div>
     <div class="panel" id="levelsAccessPanel"></div>
     ${me.role === "admin" ? `<div class="panel" id="teachersPanel"></div>` : ""}
-    </div>
-    <div id="tab-cases" class="tabpane" hidden>
     <div class="panel">
       <h1>📁 Situation File Manager</h1>
       <h3>Existing practice cases</h3>
@@ -319,23 +292,13 @@ async function renderDashboard(msg) {
     </div>
     </div>
   `;
-  const TABS = ["results", "cases", "settings", "backend"];
-  const showTab = (name) => {
-    if (!TABS.includes(name)) name = "cases";
-    TABS.forEach((t) => { const pane = $("#tab-" + t); if (pane) pane.hidden = t !== name; });
-    $$("#mainTabs [data-tab]").forEach((x) => { const on = x.dataset.tab === name; x.classList.toggle("on", on); x.setAttribute("aria-selected", on); x.tabIndex = on ? 0 : -1; });
-    try { sessionStorage.setItem("adminTab", name); } catch (e) { /* ignore */ }
-    if (name === "backend") renderBackendPanel($("#backendPanel"));
-  };
-  $$("#mainTabs [data-tab]").forEach((b) => b.addEventListener("click", () => showTab(b.dataset.tab)));
-  $("#mainTabs").addEventListener("keydown", (e) => {
-    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-    const cur = TABS.indexOf(sessionStorage.getItem("adminTab") || "cases");
-    const nxt = TABS[(cur + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length];
-    showTab(nxt); $(`#mainTabs [data-tab="${nxt}"]`).focus();
-  });
-  let startTab = "cases"; try { startTab = sessionStorage.getItem("adminTab") || "cases"; } catch (e) { /* ignore */ }
-  showTab(startTab);
+  $$("#mainTabs [data-tab]").forEach((b) => b.addEventListener("click", () => {
+    const backend = b.dataset.tab === "backend";
+    $("#tabMain").style.display = backend ? "none" : "";
+    $("#tabBackend").style.display = backend ? "" : "none";
+    $$("#mainTabs [data-tab]").forEach((x) => x.classList.toggle("primary", x === b));
+    if (backend) renderBackendPanel($("#backendPanel"));
+  }));
   $("#logoutBtn").addEventListener("click", () => { token = null; me = null; sessionStorage.removeItem("adminToken"); sessionStorage.removeItem("adminMe"); renderLogin(); });
 
   renderGradingPanel($("#gradingPanel"));
@@ -1372,23 +1335,16 @@ function renderCaseList(cases) {
     const failedN = ((c.buildFlags && c.buildFlags.failedParts) || []).length;
     return `
     <div class="case-row" style="flex-direction:column;align-items:stretch;">
-      <div class="case-main">
-        ${/^data:image\//.test(c.imageData || "") ? `<img class="case-thumb" src="${escapeHtmlAttr(c.imageData)}" alt="Picture for ${escapeHtmlAttr(c.title)}" loading="lazy"/>` : `<div class="case-thumb none">No picture yet</div>`}
-        <div style="flex:1;min-width:0;">
-          <b>${escapeHtml(c.title)}</b>
-          <div style="margin-top:4px;">
-          ${(() => { const f = c.format || (c.formal ? "formal_letter" : "informal_letter"); return `<span class="fmt-stamp fmt-${escapeHtmlAttr(f)}">${({ formal_letter: "Formal letter", informal_letter: "Informal letter", article: "Article" })[f] || "Letter"}</span>`; })()}
-          <span class="draft-badge" style="margin-left:0;${c.status === "published" ? "background:var(--green);" : ""}">${c.status === "published" ? "Published" : "Draft"}</span>
-          ${c.validation ? (!c.validation.ok ? `<span class="vchip bad">✖ ${c.validation.errors.length} problem${c.validation.errors.length === 1 ? "" : "s"}</span>` : c.validation.warnings.length ? `<span class="vchip warn">⚠ ${c.validation.warnings.length} to check</span>` : `<span class="vchip ok">✔ ready</span>`) : ""}
+      <div class="row" style="justify-content:space-between;">
+        <div>
+          <b>${escapeHtml(c.title)}</b> <span class="hint">(${({ formal_letter: "Formal letter", informal_letter: "Informal letter", article: "Article" })[c.format || (c.formal ? "formal_letter" : "informal_letter")]})</span>
+          <span class="draft-badge" style="${c.status === "published" ? "background:var(--green);" : ""}">${c.status === "published" ? "Published" : "Draft"}</span>
           ${failedN ? `<span class="badge-red" title="${escapeHtmlAttr(failedLabelsFor(c).join(", "))}">⚠ AI failed on ${failedN} part${failedN === 1 ? "" : "s"} — fix manually</span>` : ""}
-          </div>
         </div>
-      </div>
-      <div>
-        <div class="case-actions">
-          ${c.status !== "published" && !(c.validation && !c.validation.ok) ? `<button class="btn small primary" data-action="publish" data-id="${c.id}">Publish</button>` : ""}
-          ${c.broken ? "" : `<button class="btn small" data-action="regen-toggle" data-id="${c.id}">🔄 Regenerate a part</button>`}
-          ${c.broken ? "" : `<button class="btn small ${failedN ? "primary" : ""}" data-action="edit-toggle" data-id="${c.id}">✏️ Edit case (Steps 1–4)</button>`}
+        <div class="row">
+          ${c.status !== "published" ? `<button class="btn small primary" data-action="publish" data-id="${c.id}">Publish</button>` : ""}
+          <button class="btn small" data-action="regen-toggle" data-id="${c.id}">🔄 Regenerate a part</button>
+          <button class="btn small ${failedN ? "primary" : ""}" data-action="edit-toggle" data-id="${c.id}">✏️ Edit case (Steps 1–4)</button>
           <button class="btn small" data-action="image-toggle" data-id="${c.id}">🖼️ ${c.imageData ? "Replace" : "Add"} picture</button>
           <button class="btn small" data-action="delete" data-id="${c.id}">Delete</button>
         </div>
@@ -1396,7 +1352,6 @@ function renderCaseList(cases) {
       <p class="hint" style="margin:4px 0 0;">
         Built by ${escapeHtml(c.created_by || "unknown")}${c.approved_by ? ` · Published by ${escapeHtml(c.approved_by)}` : ""}
       </p>
-      ${validationHtml(c)}
       <div class="regen-panel" data-panel-for="${c.id}" style="display:none;"></div>
       <div class="edit-panel" data-edit-for="${c.id}" style="display:none;"></div>
       <div class="image-panel" data-image-for="${c.id}" style="display:none;"></div>
