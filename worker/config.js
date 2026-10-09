@@ -1,7 +1,7 @@
 // v2.0 — extracted from the v1.x single-file worker without behaviour changes.
 
 
-export const APP_VERSION = "v2.0";
+export const APP_VERSION = "v2.1";
 export const SUBMIT_BURST_LIMIT = 5;
 export const SESSION_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 export const AI_TIMEOUT_MS = 9000; // per-provider timeout before falling through the chain
