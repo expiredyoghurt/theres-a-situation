@@ -160,7 +160,7 @@ free tier — this deployment should never incur an AI inference charge:**
    either `openrouter/free` or ends in the `:free` variant suffix (e.g.
    `meta-llama/llama-3.2-3b-instruct:free`) — any other model id is
    silently replaced with `openrouter/free` before the request goes out
-   (see `isFreeOpenRouterModel()` in `worker/index.js`), so a paid model
+   (see `isFreeOpenRouterModel()` in `worker/ai.js`), so a paid model
    id can't slip in by accident.
 2. **Groq** — `env.GROQ_API_KEY` (optional). Defaults to
    `openai/gpt-oss-20b`. (Groq's free tier — no credit card required —
@@ -450,7 +450,7 @@ node tests/marking_v115.test.mjs
 ```
 
 This runs a small, dependency-free test suite directly against the pure
-functions in `worker/index.js` (keyword scoring, similarity scoring,
+functions in the `worker/` modules (keyword scoring, similarity scoring,
 MCQ shuffle/answer-key correctness, letter assembly) — no D1 database,
 no AI provider, no Cloudflare runtime needed. It deliberately doesn't
 cover `submitCase()` end-to-end, since that function mixes D1/AI I/O
@@ -485,3 +485,8 @@ before deploying any change to the scoring functions.
 For cases that you prefer to author outside the app, use `AI_CASE_TO_D1_SQL_PROMPT.md` with an external AI tool to produce a complete executable SQL file. Run the resulting SQL in Cloudflare D1 Console. Set `image_data` to `NULL`; then use the Teacher front-end's **Add picture / Replace picture** control on that case to attach the stimulus image. Attaching or replacing an image returns the case to **Draft**, so it should be reviewed and published again.
 
 The included `CASE_IMPORT_EXAMPLE.sql` shows the expected D1 shape.
+
+
+## Code layout (v2.0)
+`worker/index.js` is only the router. Logic lives in `config.js`, `common.js`, `schema.js` (versioned migrations), `auth.js`, `overview.js`, `casesPublic.js`, `scoring.js`, `ai.js`, `leaderboard.js`, `adminCases.js`, `adminSubmissions.js`, `marking.js` (pure marking functions) and `validate.js` (case structure checks). To change the database, append an entry to `MIGRATIONS` in `schema.js`.
+Tests: `node tests/marking.test.mjs`, `marking_v114`, `marking_v115`, `marking_v116`, `v2_migrations` (Node 22+). Browser tests in `tests/ui/` need playwright: start `node tests/ui/serve.mjs "$PWD" 8791`, then run `step4.ui.mjs`, `admin.ui.mjs` and `casefile.ui.mjs`.
