@@ -362,7 +362,7 @@ export const DEMO_CASES = [
     formal: false,
     imageData: svgDataUrl(GARDEN_OPEN_HOUSE_SVG),
     taskText:
-      "You are a member of your school's Garden Club and you saw this notice about the Garden Club Open House. Write an article for the school newsletter to encourage your schoolmates to come. Use the notice for details, and include one idea of your own on how pupils can keep their seedlings healthy at home.",
+      "You are a member of your school's Garden Club and you saw this notice about the Garden Club Open House. Write an article for the school newsletter to encourage your schoolmates to come. Include these details (a) the date and time of the open house, (b) venue, (c) what you can do there, (d) what you should bring along, (e) how to register for the open house, and include one idea of your own on how pupils can keep their seedlings healthy at home.",
     taskChunks: [
       { id: "c1", text: "You are a member of your school's Garden Club and you saw this notice about the Garden Club Open House.", type: "context" },
       { id: "c2", text: "Write an article for the school newsletter", type: "audience" },
