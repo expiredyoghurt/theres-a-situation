@@ -6,7 +6,7 @@
 INSERT INTO cases (
   id, title, image_data, task_text, task_chunks, formal, format,
   stimulus_points, own_content_prompt, own_content_keywords,
-  components, answer_key, model_letter, status, created_by, approved_by, approved_at
+  components, answer_key, model_letter, status, created_by, approved_by, approved_at, look_for
 ) VALUES (
   'case_import_school_trip_001',
   'The School Clean-Up Day',
@@ -24,5 +24,6 @@ INSERT INTO cases (
   'draft',
   'external-ai-import',
   'external-ai-import',
-  '2026-09-14T00:00:00.000Z'
+  '2026-09-14T00:00:00.000Z',
+  '["The date","Where and when to meet","What to wear","What the school provides","When it ends"]'
 );

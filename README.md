@@ -489,4 +489,4 @@ The included `CASE_IMPORT_EXAMPLE.sql` shows the expected D1 shape.
 
 ## Code layout (v2.0)
 `worker/index.js` is only the router. Logic lives in `config.js`, `common.js`, `schema.js` (versioned migrations), `auth.js`, `overview.js`, `casesPublic.js`, `scoring.js`, `ai.js`, `leaderboard.js`, `adminCases.js`, `adminSubmissions.js`, `marking.js` (pure marking functions) and `validate.js` (case structure checks). To change the database, append an entry to `MIGRATIONS` in `schema.js`.
-Tests: `node tests/marking.test.mjs`, `marking_v114`, `marking_v115`, `marking_v116`, `v2_migrations` (Node 22+). Browser tests in `tests/ui/` need playwright: start `node tests/ui/serve.mjs "$PWD" 8791`, then run `step4.ui.mjs`, `admin.ui.mjs` and `casefile.ui.mjs`.
+Tests: `node tests/marking.test.mjs`, `marking_v114`, `marking_v115`, `marking_v116`, `v2_migrations`, `v22_lookfor` (Node 22+). Browser tests in `tests/ui/` need playwright: start `node tests/ui/serve.mjs "$PWD" 8791`, then run `step4.ui.mjs`, `admin.ui.mjs`, `casefile.ui.mjs` and `lookfor.ui.mjs`.

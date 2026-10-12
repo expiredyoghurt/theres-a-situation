@@ -19,6 +19,7 @@
     "The school football team has a match on Sunday."
   ],
   "ownContentPrompt": "Suggest one practical way Mei Ling can help with the clean-up day.",
+  "lookFor": ["The date", "Where and when to meet", "What to wear", "What the school provides", "When it ends"],
   "ownContentIdeas": [
     "bring extra reusable bags",
     "help sort the rubbish into recycling bins",

@@ -37,6 +37,7 @@
     "Free lemongrass tea for the first 40 visitors"
   ],
   "ownContentPrompt": "Suggest ONE idea on how pupils can keep their seedlings healthy once they have taken them home in a recycled pot.",
+  "lookFor": ["The date and time", "The place", "What pupils will do", "What to bring", "Who to register with and by when"],
   "ownContentIdeas": [
     "set a daily phone reminder to water it",
     "keep it on a sunny window sill",

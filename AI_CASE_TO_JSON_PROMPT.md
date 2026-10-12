@@ -72,6 +72,7 @@ Nothing else.
 9. `"distractorStimulusPoints"` should contain exactly 2 plausible but
    unnecessary facts (`relevant: false` on the pupil's evidence board) —
    details that fit the scene but are not required in the letter.
+    Optionally, `"lookFor"` is an array of 4 to 6 short labels naming the KIND of information pupils must find in the notice, e.g. "The date", "The place". Never put the answer (a date, time, name or number) in a label. Max 80 characters each. If omitted, the teacher page suggests labels for you.
 10. `"taskChunks"` should break the task prompt into short phrases, each
     tagged `"purpose"`, `"audience"`, `"context"`, or `"other"`. Cover the
     whole task text; exactly one phrase should be `"purpose"` (what
@@ -102,6 +103,7 @@ Nothing else.
   "keyInfo": ["fact 1", "fact 2", "fact 3", "fact 4", "fact 5"],
   "distractorStimulusPoints": ["unnecessary but plausible detail 1", "unnecessary but plausible detail 2"],
   "ownContentPrompt": "the own-idea question posed to pupils",
+  "lookFor": ["The date", "The place", "What to bring or wear", "Who to sign up with and by when"],
   "ownContentIdeas": ["example acceptable idea 1", "example acceptable idea 2", "example acceptable idea 3"],
   "ownContentKeywords": [["keyword", "synonym"], ["keyword2", "synonym2"]],
   "modelLetter": "full reference answer",

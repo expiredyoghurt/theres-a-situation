@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS cases (
   approved_at   TEXT,             -- when it was published
   required_text  TEXT,            -- v1.12: "required content points" text shown in Step 2
   required_image TEXT,            -- v1.12: optional picture (base64 data URL) for those points
+  look_for       TEXT,            -- v2.2: JSON array of short 'what to look for' labels shown in Step 2 (NULL/[] => no checklist)
   hunch_hint     TEXT,            -- v1.12: optional Step 3 hint; empty/NULL => pupils get no Hint button
   build_flags    TEXT,            -- v1.12: JSON {failedParts:[...]} = parts the AI builder failed on
   created_at    TEXT DEFAULT (datetime('now'))
@@ -47,6 +48,7 @@ CREATE TABLE IF NOT EXISTS cases (
 -- ALTER TABLE cases ADD COLUMN required_text TEXT;
 -- ALTER TABLE cases ADD COLUMN required_image TEXT;
 -- ALTER TABLE cases ADD COLUMN hunch_hint TEXT;
+-- ALTER TABLE cases ADD COLUMN look_for TEXT;
 -- ALTER TABLE cases ADD COLUMN build_flags TEXT;
 
 CREATE TABLE IF NOT EXISTS leaderboard (
