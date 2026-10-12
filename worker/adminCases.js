@@ -1,4 +1,5 @@
 // v2.0 — extracted from the v1.x single-file worker without behaviour changes.
+import { cleanLookFor, suggestLookFor } from "./lookfor.js";
 import { normaliseFormat } from "./marking.js";
 import { validateCaseRow } from "./validate.js";
 import { ARTICLE_COMPONENT_KEYS, ARTICLE_ONLY_KEYS, COMPONENT_LABELS, LETTER_COMPONENT_KEYS, aiBuildCase, buildManualCaseFromComponents, buildManualFallbackCase, componentKeysFor, formatFromBody } from "./adminSubmissions.js";
@@ -142,13 +143,14 @@ export async function saveBuiltCase(env, body, session, built, meta = {}) {
   if (extras.error) throw new Error(extras.error);
   const format = formatFromBody(body);
   await env.DB.prepare(
-    `INSERT INTO cases (id, title, image_data, task_text, task_chunks, formal, stimulus_points, own_content_prompt, own_content_keywords, components, answer_key, model_letter, status, created_by, required_text, required_image, hunch_hint, build_flags, format)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    `INSERT INTO cases (id, title, image_data, task_text, task_chunks, formal, stimulus_points, own_content_prompt, own_content_keywords, components, answer_key, model_letter, status, created_by, required_text, required_image, hunch_hint, look_for, build_flags, format)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).bind(
     id, body.title, body.imageData || null, body.taskText, JSON.stringify(built.taskChunks), format === "formal_letter" ? 1 : 0,
     JSON.stringify(built.stimulusPoints), body.ownContentPrompt || "", JSON.stringify(built.ownContentKeywords || []),
     JSON.stringify(built.components), JSON.stringify(built.answerKey), body.modelLetter, "draft", session.username,
     extras.requiredText, extras.requiredImageData, extras.hunchHint,
+    JSON.stringify(Array.isArray(body.lookFor) || typeof body.lookFor === "string" ? cleanLookFor(body.lookFor) : suggestLookFor(Array.isArray(body.keyInfo) && body.keyInfo.length ? body.keyInfo : (built.stimulusPoints || []).filter((p) => p.relevant).map((p) => p.text))),
     failedParts.length ? JSON.stringify({ failedParts, at: new Date().toISOString() }) : null,
     format
   ).run();
@@ -309,6 +311,7 @@ export async function adminSaveCaseEvidence(env, request, caseId, session) {
   const built = buildStimulusPointsFromTiles(body.tiles);
   if (built.error) return json({ error: built.error }, 400);
   const requiredText = String(body.requiredText || "").trim().slice(0, MAX_REQUIRED_TEXT_LEN);
+  const lookFor = body.lookFor === undefined ? undefined : cleanLookFor(body.lookFor);
   let requiredImage = row.required_image || null;           // undefined => keep
   if (body.requiredImageData === null || body.requiredImageData === "") requiredImage = null; // explicit clear
   else if (typeof body.requiredImageData === "string") {
@@ -319,7 +322,8 @@ export async function adminSaveCaseEvidence(env, request, caseId, session) {
   const flags = buildFlagsJsonWithout(row.build_flags, ["stimulus"]);
   await env.DB.prepare("UPDATE cases SET stimulus_points = ?, required_text = ?, required_image = ?, build_flags = ?, status = 'draft', approved_by = NULL, approved_at = NULL WHERE id = ?")
     .bind(JSON.stringify(built.points), requiredText, requiredImage, flags, caseId).run();
-  return json({ ok: true, savedBy: session.username, stimulusPoints: built.points, status: "draft" });
+  if (lookFor !== undefined) await env.DB.prepare("UPDATE cases SET look_for = ? WHERE id = ?").bind(JSON.stringify(lookFor), caseId).run();
+  return json({ ok: true, savedBy: session.username, stimulusPoints: built.points, lookFor: lookFor ?? undefined, status: "draft" });
 }
 
 /** Step 3 editor: optional pupil-facing hint. Empty string removes it (and
@@ -335,3 +339,9 @@ export async function adminSaveCaseHint(env, request, caseId, session) {
   return json({ ok: true, savedBy: session.username, hint, status: "draft" });
 }
 
+
+/** Teacher editor helper: suggest "what to look for" labels from the correct tiles. */
+export async function adminSuggestLookFor(request) {
+  const body = await request.json().catch(() => ({}));
+  return json({ lookFor: suggestLookFor(body.texts) });
+}

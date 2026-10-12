@@ -40,6 +40,11 @@ export function validateCaseRow(row) {
     if (kw !== undefined && !Array.isArray(kw)) errors.push("own_content_keywords must be a JSON array.");
   }
 
+  if (row.look_for != null && row.look_for !== "") {
+    const lf = parse(row.look_for, "look_for", errors);
+    if (lf !== undefined && (!Array.isArray(lf) || lf.length > 8 || lf.some((t) => typeof t !== "string" || !t.trim() || t.length > 80))) errors.push("look_for must be a JSON array of up to 8 short text labels.");
+  }
+
   const comps = parse(row.components, "components", errors);
   const ak = parse(row.answer_key, "answer_key", errors);
   if (comps !== undefined) {

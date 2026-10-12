@@ -1,4 +1,5 @@
 // v2.0 — extracted from the v1.x single-file worker without behaviour changes.
+import { parseLookFor } from "./lookfor.js";
 import { ERROR_LABELS, normaliseFormat, publicOptionId, realisticKeyInfoDistractors } from "./marking.js";
 import { DEMO_CASES } from "./demoCases.js";
 import { validateCaseRow } from "./validate.js";
@@ -220,6 +221,7 @@ export function toPublicCase(c) {
     requiredText: (c.required_text ?? c.requiredText) || "",
     requiredImageData: (c.required_image ?? c.requiredImageData) || null,
     hunchHint: ((c.hunch_hint ?? c.hunchHint) || "").trim(),
+    lookFor: parseLookFor(c.look_for ?? c.lookFor),
     components: (typeof c.components === "string" ? JSON.parse(c.components) : c.components)
       .map((comp) => ({
         key: comp.key,
@@ -241,6 +243,7 @@ export function fullCaseFromRow(row) {
     requiredText: row.required_text || "",
     requiredImageData: row.required_image || null,
     hunchHint: row.hunch_hint || "",
+    lookFor: parseLookFor(row.look_for),
     buildFlags: parseBuildFlags(row.build_flags),
   };
   return ensureV16Components(full);

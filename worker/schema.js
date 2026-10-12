@@ -69,6 +69,13 @@ export const MIGRATIONS = [
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_submissions_class ON submissions(player_class)").run();
       await db.prepare("CREATE INDEX IF NOT EXISTS idx_submissions_lb ON submissions(leaderboard_id)").run();
     } },
+  { version: 5, name: "cases.look_for (Step 2 'what to look for' checklist)", run: async (db) => {
+      const info = await db.prepare("PRAGMA table_info(cases)").all();
+      const have = new Set((info.results || []).map((r) => r.name));
+      if (have.size && !have.has("look_for")) {
+        try { await db.prepare("ALTER TABLE cases ADD COLUMN look_for TEXT").run(); } catch (e) { /* another isolate added it first */ }
+      }
+    } },
 ];
 
 export function ensureSchema(env) {

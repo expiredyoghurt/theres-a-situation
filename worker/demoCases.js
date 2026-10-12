@@ -311,6 +311,7 @@ export const DEMO_CASES = [
     ownContentPrompt:
       "Suggest ONE way you could still help with the Recycling Fair, even though you can't be there on the day itself.",
     hunchHint: "You cannot attend on the day — so what could you do BEFORE the Fair? Look at the sign-up deadline in the notice.",
+    lookFor: ["The date", "The time", "The place", "Who to sign up with and by when", "What volunteers will do"],
     ownContentKeywords: [
       ["donate", "contribute items", "give recyclables", "bring recyclable items"],
       ["poster", "posters", "banner", "design", "publicity"],
@@ -346,6 +347,7 @@ export const DEMO_CASES = [
     ownContentPrompt:
       "Suggest ONE fun thing you and Wei Jie could do together before or after Sports Day.",
     hunchHint: "Think about getting ready for the races together, or celebrating afterwards.",
+    lookFor: ["The date", "The time", "The place", "What to bring or wear", "What happens after the closing ceremony"],
     ownContentKeywords: [
       ["practice", "practise", "train", "warm up", "run together"],
       ["cheer", "support", "watch together"],
@@ -362,7 +364,7 @@ export const DEMO_CASES = [
     formal: false,
     imageData: svgDataUrl(GARDEN_OPEN_HOUSE_SVG),
     taskText:
-      "You are a member of your school's Garden Club and you saw this notice about the Garden Club Open House. Write an article for the school newsletter to encourage your schoolmates to come. Include these details (a) the date and time of the open house, (b) venue, (c) what you can do there, (d) what you should bring along, (e) how to register for the open house, and include one idea of your own on how pupils can keep their seedlings healthy at home.",
+      "You are a member of your school's Garden Club and you saw this notice about the Garden Club Open House. Write an article for the school newsletter to encourage your schoolmates to come. Use the notice for details, and include one idea of your own on how pupils can keep their seedlings healthy at home.",
     taskChunks: [
       { id: "c1", text: "You are a member of your school's Garden Club and you saw this notice about the Garden Club Open House.", type: "context" },
       { id: "c2", text: "Write an article for the school newsletter", type: "audience" },
@@ -382,6 +384,7 @@ export const DEMO_CASES = [
     ownContentPrompt:
       "Suggest ONE idea on how pupils can keep their seedlings healthy once they have taken them home in a recycled pot.",
     hunchHint: "The notice says pupils take the seedling home in a recycled pot. What does a young plant need every day?",
+    lookFor: ["The date", "The time", "The place", "What pupils will do", "What to bring", "Who to register with and by when"],
     ownContentKeywords: [
       ["water", "watering", "reminder", "alarm", "daily"],
       ["sunlight", "sunny", "window", "balcony", "sun"],

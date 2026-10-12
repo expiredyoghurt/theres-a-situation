@@ -57,7 +57,7 @@
  * gracefully to deterministic scoring if every provider is unavailable.
  */
 
-import { adminCreateCase, adminCreateManualCase, adminDeleteCase, adminListCases, adminPublishCase, adminSaveCaseBriefing, adminSaveCaseComponents, adminSaveCaseEvidence, adminSaveCaseHint, adminUpdateCaseImage } from "./adminCases.js";
+import { adminSuggestLookFor, adminCreateCase, adminCreateManualCase, adminDeleteCase, adminListCases, adminPublishCase, adminSaveCaseBriefing, adminSaveCaseComponents, adminSaveCaseEvidence, adminSaveCaseHint, adminUpdateCaseImage } from "./adminCases.js";
 import { adminAiHealth, adminGetSubmission, adminGradeSubmission, adminListSubmissions, adminRegenerateCasePart } from "./adminSubmissions.js";
 import { adminCreateTeacher, adminDeleteTeacher, adminListTeachers, adminLogin, adminMe, adminUpdateTeacher, changePassword, getRubric, requireAuth, saveRubricRoute } from "./auth.js";
 import { getCase, getStudentAccessSetting, getTutorialAccessSetting, listCases, setStudentAccessSetting, setTutorialAccessSetting } from "./casesPublic.js";
@@ -149,6 +149,9 @@ export default {
       const briefingMatch = path.match(/^\/api\/admin\/cases\/([a-zA-Z0-9_-]+)\/briefing$/);
       if (briefingMatch && request.method === "PUT") {
         return await requireAuth(env, request, (session) => adminSaveCaseBriefing(env, request, briefingMatch[1], session));
+      }
+      if (path === "/api/admin/look-for/suggest" && request.method === "POST") {
+        return await requireAuth(env, request, () => adminSuggestLookFor(request));
       }
       const evidenceMatch = path.match(/^\/api\/admin\/cases\/([a-zA-Z0-9_-]+)\/evidence$/);
       if (evidenceMatch && request.method === "PUT") {
