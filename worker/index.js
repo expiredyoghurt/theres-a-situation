@@ -57,6 +57,7 @@
  * gracefully to deterministic scoring if every provider is unavailable.
  */
 
+import { adminSetCaseFormat } from "./caseFormat.js";
 import { adminSuggestLookFor, adminCreateCase, adminCreateManualCase, adminDeleteCase, adminListCases, adminPublishCase, adminSaveCaseBriefing, adminSaveCaseComponents, adminSaveCaseEvidence, adminSaveCaseHint, adminUpdateCaseImage } from "./adminCases.js";
 import { adminAiHealth, adminGetSubmission, adminGradeSubmission, adminListSubmissions, adminRegenerateCasePart } from "./adminSubmissions.js";
 import { adminCreateTeacher, adminDeleteTeacher, adminListTeachers, adminLogin, adminMe, adminUpdateTeacher, changePassword, getRubric, requireAuth, saveRubricRoute } from "./auth.js";
@@ -152,6 +153,10 @@ export default {
       }
       if (path === "/api/admin/look-for/suggest" && request.method === "POST") {
         return await requireAuth(env, request, () => adminSuggestLookFor(request));
+      }
+      const formatMatch = path.match(/^\/api\/admin\/cases\/([a-zA-Z0-9_-]+)\/format$/);
+      if (formatMatch && request.method === "PUT") {
+        return await requireAuth(env, request, (session) => adminSetCaseFormat(env, request, formatMatch[1], session));
       }
       const evidenceMatch = path.match(/^\/api\/admin\/cases\/([a-zA-Z0-9_-]+)\/evidence$/);
       if (evidenceMatch && request.method === "PUT") {

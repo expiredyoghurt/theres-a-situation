@@ -253,6 +253,9 @@ export function ensureV16Components(full) {
   full.format = normaliseFormat(full);
   // Articles never had the legacy 3-9 part shapes, so there is nothing to upgrade.
   if (full.format === "article") return full;
+  // A row whose components are already the article parts but whose format says "letter" (e.g. a SQL
+  // import with a missing format) must not be silently rebuilt as a letter; the format editor fixes it.
+  if (Array.isArray(full.components) && full.components.some((c) => c && c.key === "headline")) return full;
   if (Array.isArray(full.components) && JSON.stringify(full.components.map(c => c.key)) === JSON.stringify(LETTER_COMPONENT_KEYS)) return full;
   const old = Object.fromEntries((full.components || []).map(c => [c.key, c]));
   const oldAnswers = full.answerKey?.components || {};
