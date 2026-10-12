@@ -282,7 +282,7 @@ async function renderDashboard(msg) {
     <div class="topline">
       <div>Signed in as <b>${escapeHtml(me.username)}</b> <span class="tag">${me.role === "admin" ? "Admin" : "Teacher"}</span></div>
       <div class="row">
-        <span class="hint" style="margin:0;">v2.2</span>
+        <span class="hint" style="margin:0;">v2.3</span>
         <button class="btn small" id="logoutBtn">Log out</button>
       </div>
     </div>
@@ -1016,7 +1016,17 @@ function renderEditPanel(panel, c, openSteps = []) {
     ${failed.length ? `<div class="flag-red" role="alert">⚠ <b>The AI could not build ${failed.length} part${failed.length === 1 ? "" : "s"} of this case</b> and template text was used instead: ${failed.map((k) => escapeHtml(partLabelClient(k))).join(", ")}. Fix ${failed.length === 1 ? "it" : "them"} below. The case cannot be published normally until you do.</div>` : ""}
     <p class="hint">Each step saves on its own. ${c.status === "published" ? "<b>This case is published</b> — saving any step returns it to draft until you publish it again." : "Saving keeps the case as a draft."}</p>
 
-    <details class="step-sec" data-step="1" ${open(1)}><summary>🕵️ Step 1 — The Briefing ${failed.includes("taskChunks") ? `<span class="badge-red">⚠ AI failed</span>` : ""}</summary><div data-body="1"></div><div class="row"><button type="button" class="btn small primary" data-save="1">💾 Save Step 1</button><span class="hint" data-status="1"></span></div></details>
+    <details class="step-sec" data-step="1" ${open(1)}><summary>🕵️ Step 1 — The Briefing ${failed.includes("taskChunks") ? `<span class="badge-red">⚠ AI failed</span>` : ""}</summary>
+      <div class="fmt-box" data-fmt style="border:2px solid var(--navy);border-radius:10px;padding:10px;margin-bottom:10px;background:#f4f8ff;">
+        <b>📄 Writing format</b>
+        <div class="row" role="radiogroup" aria-label="Writing format" style="gap:14px;flex-wrap:wrap;margin:6px 0;">
+          ${[["formal_letter","Formal letter"],["informal_letter","Informal letter"],["article","Article"]].map(([v,l]) => `<label><input type="radio" name="fmt-${escapeHtmlAttr(c.id)}" value="${v}" ${(c.format || (c.formal ? "formal_letter" : "informal_letter")) === v ? "checked" : ""}> ${l}</label>`).join("")}
+        </div>
+        <label data-fmt-register style="display:none;"><input type="checkbox" data-fmt-rebuild> also rebuild the register-specific parts with AI (salutation, greeting, closing, sign-off, name)</label>
+        <p class="hint" data-fmt-note style="margin:4px 0;"></p>
+        <div class="row"><button type="button" class="btn small" data-fmt-go disabled>Change format</button><span class="hint" data-fmt-status></span></div>
+      </div>
+      <div data-body="1"></div><div class="row"><button type="button" class="btn small primary" data-save="1">💾 Save Step 1</button><span class="hint" data-status="1"></span></div></details>
     <details class="step-sec" data-step="2" ${open(2)}><summary>🧩 Step 2 — The Evidence Board ${failed.includes("stimulus") ? `<span class="badge-red">⚠ AI failed</span>` : ""}</summary><div data-body="2"></div><div class="row"><button type="button" class="btn small primary" data-save="2">💾 Save Step 2</button><span class="hint" data-status="2"></span></div></details>
     <details class="step-sec" data-step="3" ${open(3)}><summary>💡 Step 3 — Your Hunch: hint</summary><div data-body="3"></div><div class="row"><button type="button" class="btn small primary" data-save="3">💾 Save Step 3</button><span class="hint" data-status="3"></span></div></details>
     <details class="step-sec" data-step="4" ${open(4) || (compFlagged.length ? "open" : "")}><summary>✍️ Step 4 — Draft Your Report (13 parts) ${compFlagged.length ? `<span class="badge-red">⚠ ${compFlagged.length} AI-failed</span>` : ""}</summary><div data-body="4"></div><div class="row"><button type="button" class="btn small primary" data-save="4">💾 Save Step 4</button><span class="hint" data-status="4"></span></div></details>
@@ -1028,6 +1038,38 @@ function renderEditPanel(panel, c, openSteps = []) {
   });
   const hintEd = mountHintEditor($('[data-body="3"]', panel), c.hunchHint || "");
   const partsEd = mountPartsEditor($('[data-body="4"]', panel), comps, { flagged: compFlagged, idPrefix: "ed-" + c.id });
+
+  // ---- v2.3: writing-format control ----
+  const curFmt = c.format || (c.formal ? "formal_letter" : "informal_letter");
+  const isLetter = (f) => f !== "article";
+  const fmtBox = $("[data-fmt]", panel);
+  const fmtGo = $("[data-fmt-go]", fmtBox), fmtNote = $("[data-fmt-note]", fmtBox), fmtStatus = $("[data-fmt-status]", fmtBox);
+  const fmtReg = $("[data-fmt-register]", fmtBox), fmtRebuild = $("[data-fmt-rebuild]", fmtBox);
+  const pickedFmt = () => $("input[type=radio]:checked", fmtBox).value;
+  const updateFmtUi = () => {
+    const t = pickedFmt(), same = t === curFmt;
+    fmtGo.disabled = same;
+    fmtReg.style.display = !same && isLetter(t) && isLetter(curFmt) ? "block" : "none";
+    fmtNote.textContent = same ? "" : isLetter(t) !== isLetter(curFmt)
+      ? "Letter ↔ article: the parts that differ are rebuilt by AI (any it can't build are flagged). Matching parts keep their options. The model answer is NOT rewritten."
+      : "Letter ↔ letter: parts are kept and relabelled. Tick the box to also have AI rewrite the register-specific parts.";
+  };
+  $$("input[type=radio]", fmtBox).forEach((r) => r.addEventListener("change", updateFmtUi));
+  updateFmtUi();
+  fmtGo.addEventListener("click", async () => {
+    const t = pickedFmt();
+    if (!confirm(`Change this case to ${t.replace("_", " ")}? It will return to draft and must be republished. Rebuilt parts need checking.`)) return;
+    fmtGo.disabled = true; fmtStatus.textContent = "Changing format… (AI rebuild can take a while)";
+    try {
+      const res = await api(`/api/admin/cases/${c.id}/format`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ format: t, rebuildRegister: !!fmtRebuild.checked }) });
+      const bits = [`“${c.title}” is now ${t.replace("_", " ")} and a draft.`];
+      if (res.rebuilt && res.rebuilt.length) bits.push(`Rebuilt: ${res.rebuilt.length} part(s).`);
+      if (res.failedLabels && res.failedLabels.length) bits.push(`AI could not build: ${res.failedLabels.join(", ")} — template text used, fix before publishing.`);
+      (res.warnings || []).forEach((w) => bits.push(w));
+      caseListBanner = { ok: !(res.failedLabels && res.failedLabels.length), text: bits.join(" ") };
+      await refreshCaseList({ caseId: c.id, openSteps: [1] });
+    } catch (e) { fmtStatus.textContent = "Failed: " + e.message; fmtGo.disabled = false; }
+  });
 
   const savers = {
     1: () => ["/briefing", { chunks: chunkEd.get() }],
