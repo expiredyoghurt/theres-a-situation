@@ -47,13 +47,14 @@ Your job is to return a **single executable SQLite/D1 SQL file** that inserts ex
 21. Store JSON using valid JSON syntax inside SQL string literals.
 22. Keep the case content suitable for Primary 5/6 English situational writing.
 23. Distractors must be REALISTIC mistakes a Primary 6 pupil could actually make, never silly or rude. For each key-information part: one option with a single fact changed (a different date, time, place, name or number) and one vaguer option that leaves the key fact out. For the salutation and sign-off: use the wrong register or the wrong pairing (Dear Mr/Ms Name goes with Yours sincerely; Dear Sir/Madam goes with Yours faithfully). For the own idea: one idea that cannot work in this situation (for example it needs the pupil to be present when they cannot be) and one idea unrelated to the clues in the notice.
-24. The model letter must be a coherent full reference answer that uses the intended register and includes all 5 key information points plus the own-content idea in a natural way.
+24. `look_for` (the LAST column) is a JSON array of 4 to 6 short labels naming the KIND of information pupils must find in the notice, one per required fact in `stimulus_points`, e.g. `["The date","The place","What to bring or wear","Who to sign up with and by when"]`. Labels describe the category only and must NEVER contain the answer (no dates, times, names or numbers). Each is at most 80 characters.
+25. The model letter must be a coherent full reference answer that uses the intended register and includes all 5 key information points plus the own-content idea in a natural way.
 
 ## Required SQL column order
 
 Use these columns exactly:
 
-`id, title, image_data, task_text, task_chunks, formal, format, stimulus_points, own_content_prompt, own_content_keywords, components, answer_key, model_letter, status, created_by, approved_by, approved_at`
+`id, title, image_data, task_text, task_chunks, formal, format, stimulus_points, own_content_prompt, own_content_keywords, components, answer_key, model_letter, status, created_by, approved_by, approved_at, look_for`
 
 ## CASE BRIEF
 

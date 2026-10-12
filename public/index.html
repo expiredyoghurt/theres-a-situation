@@ -297,6 +297,12 @@
   .evidence-photo img{display:block;width:100%;border:1px solid #cfc6a8;}
   .evidence-photo::before,.evidence-photo::after{content:"";position:absolute;top:-9px;width:62px;height:20px;background:rgba(232,214,150,.78);box-shadow:0 1px 2px rgba(0,0,0,.2);}
   .evidence-photo::before{left:14px;transform:rotate(-6deg);} .evidence-photo::after{right:14px;transform:rotate(5deg);}
+  .lookfor{background:var(--card);border:1.5px solid var(--gold);border-radius:8px;padding:10px 14px;margin:0 0 14px;color:#3d2f17;}
+  .lookfor h3{margin:0 0 4px;font:400 16px 'Special Elite',monospace;color:var(--navy);}
+  .lf-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:4px 14px;}
+  .lf-list label{display:flex;gap:8px;align-items:flex-start;font-size:14px;line-height:1.4;padding:4px 0;cursor:pointer;}
+  .lf-list input{margin-top:3px;width:18px;height:18px;flex:none;}
+  .lf-count{margin:6px 0 0;font-size:12.5px;color:#7a6a45;} .lookfor.all{border-color:var(--green);background:var(--green-light);}
   .evidence-photo figcaption{font:12px 'Lexend';color:#7a6a45;text-align:center;margin-top:6px;}
   .evidence-photo.zoom{position:fixed;inset:12px;z-index:50;max-width:none;margin:0;transform:none;cursor:zoom-out;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,16,22,.94);border:none;}
   .evidence-photo.zoom img{max-height:88vh;width:auto;max-width:100%;object-fit:contain;} .evidence-photo.zoom::before,.evidence-photo.zoom::after{display:none;} .evidence-photo.zoom figcaption{color:#dbe4ee;}
@@ -468,7 +474,7 @@
 
 <div class="wrap" id="app"></div>
 
-<div class="footer-link"><a href="/admin.html">Teacher / Admin tools →</a> <span style="color:#5b6a78;">· v2.1</span></div>
+<div class="footer-link"><a href="/admin.html">Teacher / Admin tools →</a> <span style="color:#5b6a78;">· v2.2</span></div>
 
 <script>
 
@@ -503,6 +509,7 @@ let state = {
   deviceId: getOrCreateDeviceId(),
   taskAnswers: {},
   stimulusSelected: new Set(),
+  lookForTicks: {},
   ownContent: "",
   componentChoices: {},
   signOffName: "",
@@ -549,6 +556,7 @@ function resetCaseState() {
   state.step = 0;
   state.taskAnswers = {};
   state.stimulusSelected = new Set();
+  state.lookForTicks = {};
   state.ownContent = "";
   state.componentChoices = {};
   state.paragraphBreaks = new Set();
@@ -1051,6 +1059,29 @@ function bindEvidencePhoto(body) {
 }
 
 // ---- Step 1: Evidence (stimulus key info) ----
+/** Step 2 checklist from the teacher: the KIND of information to find (labels, never answers). */
+function lookForHtml(c) {
+  const items = Array.isArray(c.lookFor) ? c.lookFor.filter(Boolean) : [];
+  if (!items.length) return "";
+  const n = items.length, ticked = items.filter((_, i) => state.lookForTicks[i]).length;
+  return `<section class="lookfor" aria-labelledby="lfTitle">
+    <h3 id="lfTitle">🔎 What to look for</h3>
+    <p class="field-note" style="margin:0 0 6px;">Find ${n} kinds of information in the notice and pin the tiles that give them. Tick each one when you have found it.</p>
+    <ul class="lf-list">${items.map((t, i) => `<li><label><input type="checkbox" data-lf="${i}" ${state.lookForTicks[i] ? "checked" : ""}/> <span>${escapeHtml(t)}</span></label></li>`).join("")}</ul>
+    <p class="lf-count" role="status" aria-live="polite">${ticked} of ${n} found</p>
+  </section>`;
+}
+function bindLookFor(body, c) {
+  const sec = $(".lookfor", body); if (!sec) return;
+  const n = (c.lookFor || []).filter(Boolean).length;
+  $$("input[data-lf]", sec).forEach((cb) => cb.addEventListener("change", () => {
+    state.lookForTicks[cb.dataset.lf] = cb.checked;
+    const ticked = $$("input[data-lf]", sec).filter((x) => x.checked).length;
+    $(".lf-count", sec).textContent = `${ticked} of ${n} found`;
+    sec.classList.toggle("all", ticked === n);
+  }));
+}
+
 function renderEvidence(body, c) {
   body.innerHTML = `
     <h2 class="step-title">🧩 Step 2 — The Evidence Board</h2>
@@ -1061,11 +1092,13 @@ function renderEvidence(body, c) {
       <div class="required-box" id="requiredBox">
         <h3>📋 Required content points</h3>
         ${c.requiredText ? `<div class="required-text">${escapeHtml(c.requiredText).replace(/\n/g, "<br>")}</div>` : ""}
-        ${c.requiredImageData ? `<img src="${c.requiredImageData}" alt="Required content points (picture)"/>` : ""}
+        ${c.requiredImageData ? `<img src="${escapeHtml(c.requiredImageData)}" alt="Required content points (picture)"/>` : ""}
       </div>` : ""}
+    ${lookForHtml(c)}
     <div class="evidence-grid" id="evGrid"></div>
   `;
   bindMissedBanner(body);
+  bindLookFor(body, c);
   const grid = $("#evGrid", body);
   grid.innerHTML = c.stimulusPoints.map((p) => {
     const selected = state.stimulusSelected.has(p.id);

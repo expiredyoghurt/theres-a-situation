@@ -282,7 +282,7 @@ async function renderDashboard(msg) {
     <div class="topline">
       <div>Signed in as <b>${escapeHtml(me.username)}</b> <span class="tag">${me.role === "admin" ? "Admin" : "Teacher"}</span></div>
       <div class="row">
-        <span class="hint" style="margin:0;">v2.1</span>
+        <span class="hint" style="margin:0;">v2.2</span>
         <button class="btn small" id="logoutBtn">Log out</button>
       </div>
     </div>
@@ -864,7 +864,7 @@ function mountChunkEditor(container, chunks, { taskText } = {}) {
 }
 
 /** Step 2 — Evidence: required content points (text and/or picture) + up to 12 option tiles. */
-function mountEvidenceEditor(container, { requiredText = "", requiredImage = null, tiles = [] } = {}) {
+function mountEvidenceEditor(container, { requiredText = "", requiredImage = null, tiles = [], lookFor = [], autoSuggest = false } = {}) {
   let image = requiredImage;          // current picture (data URL) or null
   let imageChanged = false;           // false => tell the server to keep the stored picture
   container.innerHTML = `
@@ -874,6 +874,9 @@ function mountEvidenceEditor(container, { requiredText = "", requiredImage = nul
     <img class="imgprev" data-req-prev style="display:${image ? "block" : "none"};" ${image ? `src="${escapeHtmlAttr(image)}"` : ""} alt="Required points preview"/>
     <button type="button" class="btn small" data-req-clear style="display:${image ? "inline-block" : "none"};">Remove picture</button>
     <span class="hint" data-req-status></span>
+    <h4 class="sub-h" style="margin-top:16px;">🔎 What to look for <span class="hint">(a checklist pupils see in Step 2: one short label per line, up to 8. Name the <b>kind</b> of information, such as "The date", never the answer itself)</span></h4>
+    <textarea data-lookfor maxlength="700" rows="5" placeholder="The date&#10;The time&#10;The place&#10;Who to sign up with and by when">${escapeHtml((lookFor || []).join("\n"))}</textarea>
+    <div class="row" style="flex-wrap:wrap;gap:8px;"><button type="button" class="btn small" data-lookfor-suggest>✨ Suggest from the correct tiles</button><span class="hint" data-lookfor-status>Leave blank to hide the checklist for this case.</span></div>
     <h4 class="sub-h" style="margin-top:16px;">🧩 Option tiles <span class="hint">(pupils pin the ones they think belong in the letter — up to 12)</span></h4>
     <div class="tile-list"></div>
     <div class="row" style="flex-wrap:wrap;gap:8px;"><button type="button" class="btn small" data-add-tile>+ Add tile</button><span class="hint" data-tile-count></span></div>`;
@@ -901,6 +904,20 @@ function mountEvidenceEditor(container, { requiredText = "", requiredImage = nul
   tiles.forEach(addTile);
   addBtn.addEventListener("click", () => { if ($$(".tile-row", list).length < 12) addTile(); });
 
+  const lfEl = $("[data-lookfor]", container), lfStatus = $("[data-lookfor-status]", container);
+  const suggestLookFor = async () => {
+    const texts = $$(".tile-row", list).filter((r) => $("select", r).value === "1").map((r) => $("input", r).value.trim()).filter(Boolean);
+    if (!texts.length) { lfStatus.textContent = "Add at least one correct tile first."; return; }
+    lfStatus.textContent = "Suggesting…";
+    try {
+      const d = await api("/api/admin/look-for/suggest", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ texts }) });
+      lfEl.value = (d.lookFor || []).join("\n");
+      lfStatus.textContent = "Suggested. Edit freely: these are labels, so make sure none gives away the answer.";
+    } catch (e) { lfStatus.textContent = "Could not suggest: " + e.message; }
+  };
+  $("[data-lookfor-suggest]", container).addEventListener("click", suggestLookFor);
+  if (autoSuggest && !(lookFor || []).length) suggestLookFor();
+
   const fileEl = $("[data-req-file]", container), prev = $("[data-req-prev]", container), clearBtn = $("[data-req-clear]", container), status = $("[data-req-status]", container);
   fileEl.addEventListener("change", () => {
     const file = fileEl.files && fileEl.files[0]; if (!file) return;
@@ -914,6 +931,7 @@ function mountEvidenceEditor(container, { requiredText = "", requiredImage = nul
   return {
     get: () => ({
       requiredText: $("[data-req-text]", container).value.trim(),
+      lookFor: lfEl.value.split("\n").map((s) => s.trim()).filter(Boolean),
       // undefined = leave the stored picture alone; null = remove it; string = new picture
       requiredImageData: imageChanged ? image : undefined,
       tiles: $$(".tile-row", list).map((r) => ({ text: $("input", r).value.trim(), correct: $("select", r).value === "1" })).filter((t) => t.text),
@@ -1005,7 +1023,7 @@ function renderEditPanel(panel, c, openSteps = []) {
   `;
   const chunkEd = mountChunkEditor($('[data-body="1"]', panel), (c.taskChunks || []).map((t) => ({ text: t.text, type: t.type })), { taskText: () => c.task_text || "" });
   const evEd = mountEvidenceEditor($('[data-body="2"]', panel), {
-    requiredText: c.requiredText || "", requiredImage: c.requiredImageData || null,
+    requiredText: c.requiredText || "", requiredImage: c.requiredImageData || null, lookFor: c.lookFor || [],
     tiles: (c.stimulusPoints || []).map((p) => ({ text: p.text, correct: !!p.relevant })),
   });
   const hintEd = mountHintEditor($('[data-body="3"]', panel), c.hunchHint || "");
@@ -1013,7 +1031,7 @@ function renderEditPanel(panel, c, openSteps = []) {
 
   const savers = {
     1: () => ["/briefing", { chunks: chunkEd.get() }],
-    2: () => { const v = evEd.get(); const body = { requiredText: v.requiredText, tiles: v.tiles }; if (v.requiredImageData !== undefined) body.requiredImageData = v.requiredImageData; return ["/evidence", body]; },
+    2: () => { const v = evEd.get(); const body = { requiredText: v.requiredText, tiles: v.tiles, lookFor: v.lookFor }; if (v.requiredImageData !== undefined) body.requiredImageData = v.requiredImageData; return ["/evidence", body]; },
     3: () => ["/hint", { hint: hintEd.get() }],
     4: () => {
       const v = partsEd.get();
@@ -1594,6 +1612,7 @@ function openManualEditor(form, { parts, getImageData, sourceLabel, extras }) {
   const chunkEd = mountChunkEditor($("#mb1", form), importedChunks || guessChunksFromTask($("#f_task", form).value), { taskText: () => $("#f_task", form).value });
   const importedDistractors = (extras?.distractorStimulusPoints || []).filter((t) => String(t || "").trim()).map((t) => ({ text: String(t).trim(), correct: false }));
   const evEd = mountEvidenceEditor($("#mb2", form), {
+    lookFor: extras?.lookFor || [], autoSuggest: true,
     tiles: [...keyInfoNow().map((text) => ({ text, correct: true })), ...(importedDistractors.length ? importedDistractors : [{ text: "", correct: false }, { text: "", correct: false }])],
   });
   const hintEd = mountHintEditor($("#mb3", form), extras?.hunchHint || "");
@@ -1621,7 +1640,7 @@ function openManualEditor(form, { parts, getImageData, sourceLabel, extras }) {
         ownContentPrompt: $("#f_ownprompt", form).value.trim(),
         ownContentIdeas: $("#f_ownideas", form).value.split("\n").map((s) => s.trim()).filter(Boolean),
         modelLetter, imageData: getImageData(), components,
-        taskChunks, stimulusTiles: ev.tiles, requiredText: ev.requiredText, hunchHint: hintEd.get(),
+        taskChunks, stimulusTiles: ev.tiles, requiredText: ev.requiredText, lookFor: ev.lookFor, hunchHint: hintEd.get(),
       };
       if (ev.requiredImageData) payload.requiredImageData = ev.requiredImageData;
       await api("/api/admin/cases/manual", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
@@ -1767,7 +1786,7 @@ function renderForm(form) {
       msg.innerHTML = `<div class="msg ok">Loaded "${escapeHtml(data.title)}". Review the 13 parts below, attach a stimulus picture, then save.</div>`;
       openManualEditor(form, {
         parts, getImageData: () => imageData, sourceLabel: file.name,
-        extras: { taskChunks: data.taskChunks, distractorStimulusPoints: data.distractorStimulusPoints, hunchHint: data.hunchHint },
+        extras: { taskChunks: data.taskChunks, distractorStimulusPoints: data.distractorStimulusPoints, hunchHint: data.hunchHint, lookFor: data.lookFor },
       });
     };
     reader.readAsText(file);
