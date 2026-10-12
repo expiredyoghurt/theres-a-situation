@@ -7,6 +7,7 @@ export async function openAdmin(browser, vw) {
   await p.route("**/api/admin/**", (r) => {
     const u = new URL(r.request().url()).pathname;
     const j = (o) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(o) });
+    if (/^\/api\/admin\/cases\/[^/]+\/format$/.test(u)) { (globalThis.__fmtCalls ||= []).push(JSON.parse(r.request().postData() || "{}")); return j({ ok: true, format: "article", rebuilt: ["salutation", "greeting"], failedLabels: ["Step 4 part 3 (hook)"], warnings: ["The model answer was not changed. Edit it so it matches the new format."] }); }
     if (u === "/api/admin/look-for/suggest") return j({ lookFor: ["The date", "The place"] });
     if (u === "/api/admin/cases") return j({ cases: [mkCase("c1", "The School Clean-Up Day", "informal_letter", "published", png), mkCase("c2", "Garden Club Open House", "article", "draft", null), mkCase("c3", "Bad Import", "formal_letter", "draft", png, false)] });
     return j({ ok: true, enabled: true, tutorialCasesEnabled: true, rubric: {}, submissions: [], classes: [], pupils: [], cases: [], misconceptions: [], teachers: [], providers: [] });
